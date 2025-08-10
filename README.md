@@ -6,13 +6,13 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 The study guide is organized into the following sections:
 
-- **src/index.md**: The main entry point of the guide, offering an overview of the CKA exam and links to various sections.
-- **src/rbac/practices.md**: Personal practices about RBAC.
-- **src/rbac/notes.md**: Personal notes about RBAC, including key concepts and definitions.
-- **src/rbac/commands.md**: A collection of essential commands for managing roles and permissions in Kubernetes.
-- **src/rbac/exercises.md**: Exercises and practical scenarios to test your understanding of RBAC concepts.
-- **docs/overview.md**: An overview of the CKA exam, including its structure, covered topics, and study tips.
-- **docs/rbac.md**: Detailed explanations, examples, and best practices for using RBAC in Kubernetes.
+- [Index](src/index.md): The main entry point of the guide, offering an overview of the CKA exam and links to various sections.
+- [Practices](src/rbac/practices.md): Personal practices about RBAC.
+- [Notes](src/rbac/notes.md): Personal notes about RBAC, including key concepts and definitions.
+- [Commands](src/rbac/commands.md): A collection of essential commands for managing roles and permissions in Kubernetes.
+- [Exercises](src/rbac/exercises.md): Exercises and practical scenarios to test your understanding of RBAC concepts.
+- [Overview] (docs/overview.md): An overview of the CKA exam, including its structure, covered topics, and study tips.
+- [RBAC] (docs/rbac.md): Detailed explanations, examples, and best practices for using RBAC in Kubernetes.
 
 ## Getting Started
 
