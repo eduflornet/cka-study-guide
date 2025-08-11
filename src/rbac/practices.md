@@ -79,58 +79,9 @@ kubectl create secret tls johndoe-tls \
 ```
 Then use it in a Deployment, Ingress, or Webhook.
 
-## 📤 Copy files from the container to the host
+## 📤 Copy files ca.crt and ca.key from the container to the host
 1. 🔍 Identify the name of the control-plane container
 It is usually called something like kind-control-plane. To confirm:
-
-```bash
-docker ps --filter name=kind-control-plane --format "{{.Names}}"
-```
-Suppose the name is kind-control-plane.
-
-## Adapt these instructions for kind: openssl x509 -req -in johndoe.csr -CA /.minikube/ca.crt -CAkey \ /.minikube/ca.key -CAcreateserial -out johndoe.crt -days 364 Signature ok subject=/CN=johndoe/O=cka-study-guide Getting CA Private Key
-
-Let's adapt that command for a typical Minikube and OpenSSL environment. The goal is to sign a certificate (johndoe.csr) using Minikube's CA.
-
-🛠️ Adapted command version
-```bash
-openssl x509 -req -in johndoe.csr \
-  -CA ~/.minikube/ca.crt \
-  -CAkey ~/.minikube/ca.key \
-  -CAcreateserial \
-  -out johndoe.crt \
-  -days 364
-```
-✅ Explanation of each part
--req -in johndoe.csr: Uses johndoe's certificate request (CSR).
-
--CA ~/.minikube/ca.crt: Path to Minikube's CA certificate.
-
--CAkey ~/.minikube/ca.key: Path to the CA private key.
-
--CAcreateserial: Creates a serial number for the certificate.
-
--out johndoe.crt: Output file with the signed certificate.
-
--days 364: The certificate will be valid for 364 days.
-
-📁 Important notes
-Make sure ca.crt and ca.key exist in ~/.minikube/.
-
-Run the command from the directory where johndoe.csr is, or adjust the path.
-
-If a ca.srl file already exists, you can omit -CAcreateserial.
-
-Do you want help generating the CSR (johndoe.csr) as well?
-
-## Using k8s in docker and need to adapt this
-Perfect, if you are using Kubernetes in Docker (KinD) instead of Minikube, the approach changes a bit because KinD does not directly expose a CA like Minikube. But you can follow these steps to adapt the certificate signing process in KinD:
-
-🔧 Option 1: Use KinD cluster CA
-KinD creates its own internal CA to sign certificates, but it does not expose it easily. To sign your CSR (johndoe.csr) with KinD's CA, you need to:
-
-1. 🔍 Extract the cluster CA
-You can get the CA certificate and key from the control-plane container:
 
 ```bash
 # Find the name of the control-plane container
@@ -176,8 +127,6 @@ Mount it in a pod as a Secret or Volume.
 Use it for authentication with the API server if you configure it as a user in kubeconfig.
 
 Integrate it in a webhook, ingress, or any component that requires TLS.
-
-Do you want help creating the CSR or configuring the certificate in Kubernetes?
 
 ## Copy johndoe.crt and johndoe.key from the control-plane container to the host
 
@@ -356,7 +305,6 @@ kubectl config view --minify --output 'jsonpath={..namespace}'
 
 🧠 What does this command do?
 --minify: filters only the current context information
-
 --output 'jsonpath={..namespace}': extracts the namespace field from the context
 
 Since Kubernetes v1.24 and later, tokens are no longer created automatically as before.
@@ -387,9 +335,10 @@ kubectl apply -f cka-user-token.yaml --namespace=cka-test
 kubectl describe serviceaccount cka-user --namespace=cka-test
 ```
 Now you should see:
-
+```bash
 Mountable secrets:   cka-user-token
 Tokens:              cka-user-token
+```
 
 3. 🧪 Get the token for authentication (optional)
 ```bash
@@ -439,17 +388,12 @@ Look for the .data.token field. If it is empty, wait a few seconds and run the c
 kubectl get secret cka-user-token --namespace=cka-test -o jsonpath='{.data.token}' | base64 -d
 ```
 
-🛠️ Create a kubeconfig for the ServiceAccount
+## 🛠️ Create a kubeconfig for the ServiceAccount
 Suppose:
-
 Namespace: cka-test
-
 ServiceAccount: cka-user
-
 Token: you got it with kubectl get secret ...
-
 Cluster name: kind-kind
-
 API server: you can get it with:
 
 ```bash
@@ -604,7 +548,7 @@ kubectl --kubeconfig=cka-user.kubeconfig delete deployment nginx
 
 All this should work within the cka-test namespace.
 
-## Assign a serviceAccount to a pod
+## Assign a ServiceAccount to a Pod
 
 In the latest version of Kubernetes, you can use the imperative kubectl run command to create a Pod and assign it a custom ServiceAccount. Although the --serviceaccount flag was removed in recent versions, you can achieve this using the --overrides parameter.
 
@@ -694,7 +638,7 @@ Run it:
 ./create_pod.sh
 ```
 
-#### kubeconfig file 
+## Kube config
 It is essential to interact with a Kubernetes cluster, as it contains access information such as users, contexts, and credentials. Here is how to check it and add users.
 
 How to check the kubeconfig file?
