@@ -1,30 +1,48 @@
 # CKA Study Guide
 
-Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This project is designed to help you prepare for the CKA exam by providing structured documentation, practices, notes, commands, and exercises related to key topics, including Role-Based Access Control (RBAC).
+## CKA Exam Overview
+Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This project is designed to help you prepare for the CKA exam by providing structured documentation, practices, notes, commands, and exercises related to key topics about [CKA Curriculum CNCF official](https://github.com/cncf/curriculum).  
 
-## Project Structure
 
-The study guide is organized into the following sections:
+## CKA Curriculum 1.33 (effective August 2025)
 
-- [Index](src/index.md): The main entry point of the guide, offering an overview of the CKA exam and links to various sections.
-- [Practices](src/rbac/practices.md): Personal practices about RBAC.
-- [Notes](src/rbac/notes.md): Personal notes about RBAC, including key concepts and definitions.
-- [Commands](src/rbac/commands.md): A collection of essential commands for managing roles and permissions in Kubernetes.
-- [Exercises](src/rbac/exercises.md): Exercises and practical scenarios to test your understanding of RBAC concepts.
-- [Overview](docs/overview.md): An overview of the CKA exam, including its structure, covered topics, and study tips.
-- [RBAC](docs/rbac.md): Detailed explanations, examples, and best practices for using RBAC in Kubernetes.
+## 25% - Cluster Architecture, Installation and Conﬁguration
 
-## Getting Started
+- [Manage role based access control (RBAC)](src/index.md)
+- Prepare underlying infrastructure for installing a Kubernetes cluster
+- Create and manage Kubernetes clusters using kubeadm
+- Manage the lifecycle of Kubernetes clusters
+- Implement and conﬁgure a highly-available control plane
+- Use Helm and Kustomize to install cluster components
+- Understand extension interfaces (CNI, CSI, CRI, etc.)
+- Understand CRDs, install and conﬁgure operators
 
-To get started with this study guide:
+## 15% - Workloads and Scheduling
+- Understand application deployments and how to perform rolling update and rollbacks
+- Use ConﬁgMaps and Secrets to conﬁgure applications
+- Conﬁgure workload autoscaling
+- Understand the primitives used to create robust, self-healing, application deployments
+- Conﬁgure Pod admission and scheduling (limits, node afﬁnity, etc.)
 
-1. Clone the repository to your local machine.
-2. Navigate to the project directory.
-3. Open the `src/index.md` file to start exploring the study materials.
+## 20% - Servicing and Networking
+- Understand connectivity between Pods
+- Deﬁne and enforce Network Policies
+- Use ClusterIP, NodePort, LoadBalancer service types and endpoints
+- Use the Gateway API to manage Ingress trafﬁc
+- Know how to use Ingress controllers and Ingress resources
+- Understand and use CoreDNS
 
-## Contribution
+## 10% - Storage
+- Implement storage classes and dynamic volume provisioning
+- Conﬁgure volume types, access modes and reclaim policies
+- Manage persistent volumes and persistent volume claims
 
-Feel free to add your own notes, commands, and exercises in the corresponding files in the `src/rbac` directory. This guide is intended to be a living document that evolves as you prepare for the exam.
+## 30% - Troubleshooting
+- Troubleshoot clusters and nodes
+- Troubleshoot cluster components
+- Monitor cluster and application resource usage
+- Manage and evaluate container output streams
+- Troubleshoot services and networking
 
 ## Additional Resources
 
