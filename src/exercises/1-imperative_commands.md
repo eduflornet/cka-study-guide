@@ -1,3 +1,6 @@
+
+## Imperative commands
+
 All the questions in this lab can be done imperatively. However, for some questions, you may need to first create the YAML file using imperative methods ```(for example, with --dry-run=client -o yaml). You can then modify the YAML as needed and create the object.
 
 
@@ -9,9 +12,9 @@ Create a service named redis-service to expose the existing redis pod within the
 
 Use imperative commands.
 
-Service: redis-service
-Port: 6379
-Type: ClusterIP
+- Service: redis-service
+- Port: 6379
+- Type: ClusterIP
 
 ```shell
 kubectl expose pod redis --name=redis-service --port=6379 --target-port=6379 --protocol=TCP
@@ -30,9 +33,9 @@ Este comando crea un Service de tipo ClusterIP por defecto.
 Create a deployment named webapp using the image kodekloud/webapp-color with 3 replicas.
 Try to use imperative commands only. Do not create definition files.
 
-Name: webapp
-Image: kodekloud/webapp-color
-Replicas: 3
+- Name: webapp
+- Image: kodekloud/webapp-color
+- Replicas: 3
 
 ```shell
 kubectl create deployment webapp --image kodekloud/webapp-color --replicas 3

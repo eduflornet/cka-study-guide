@@ -46,7 +46,7 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 ## Additional Resources
 
-Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/imperative.md) that I have been creating throughout this guide
+Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide
 
 For more information and resources, refer to the official Kubernetes documentation and other CKA study materials available online.
 
