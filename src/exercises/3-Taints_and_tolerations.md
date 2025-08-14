@@ -30,7 +30,7 @@ kubectl run mosquito --image nginx
 What is the state of the POD?
 
 ```shell 
-kubectl get pods ```
+kubectl get pods
 NAME       READY   STATUS    RESTARTS   AGE
 mosquito   0/1     Pending   0          45s
 ```
@@ -125,7 +125,7 @@ El pod bee se ejecutará en un nodo que tenga el taint spray=mortein:NoSchedule,
 Otra forma es crear un yaml declarativo y editarlo para agregar tolerations y al final aplicar.
 
 ```shell
-kubectl run been --image nginx --dry-run='client' -o yaml > pod-toleration.yaml
+kubectl run bee --image nginx --dry-run='client' -o yaml > pod-toleration.yaml
 ```
 
 ```shell

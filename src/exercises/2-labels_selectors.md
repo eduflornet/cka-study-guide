@@ -1,6 +1,8 @@
 
 ## Labels and selectors
 
+Practice as if you are the worst, Perform as if you are the best.
+
 You didn't do anything wrong—it's just that the scheduler isn't running in your cluster, which is why the pod is stuck in Pending. The scheduler is responsible for assigning pods to nodes. Since it's missing, your pod can't be scheduled, leading to the Pending state.
 
 To fix this, ensure the scheduler is running properly in your control plane.

@@ -4,7 +4,7 @@
 Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This project is designed to help you prepare for the CKA exam by providing structured documentation, practices, notes, commands, and exercises related to key topics about [CKA Curriculum CNCF official](https://github.com/cncf/curriculum).  
 
 
-## CKA Curriculum 1.33 (effective August 2025)
+#### CKA Curriculum 1.33 (effective August 2025)
 
 ## 25% - Cluster Architecture, Installation and Conﬁguration
 
