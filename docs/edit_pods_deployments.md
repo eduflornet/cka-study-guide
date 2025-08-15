@@ -1,7 +1,7 @@
 # A quick note on editing Pods and Deployments
 
-### Edit a POD
-Remember, you CANNOT edit specifications of an existing POD other than the below.
+### Edit a Pod
+Remember, you CANNOT edit specifications of an existing Pod other than the below.
 
 ```yaml
 spec.containers[*].image
@@ -50,8 +50,6 @@ Then create a new pod with the edited file
 ```shell
 kubectl create -f my-new-pod.yaml
 ```
-
-
 
 ### Edit Deployments
 
