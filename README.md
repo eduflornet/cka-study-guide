@@ -52,6 +52,8 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 - [A quick note on editing Pods and Deployments](https://github.com/eduflornet/cka-study-guide/blob/main/docs/edit_pods_deployments.md)
 
+- [Additional tools](https://github.com/eduflornet/cka-study-guide/blob/main/docs/additional_tools.md)
+
 For more information and resources, refer to the official Kubernetes documentation and other CKA study materials available online.
 
 Good luck with your studies and on your journey to becoming a Certified Kubernetes Administrator!
