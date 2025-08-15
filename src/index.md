@@ -11,7 +11,7 @@ The Certified Kubernetes Administrator (CKA) exam is a performance-based certifi
 - [Exercises](rbac/exercises.md): Practical scenarios and exercises to test your understanding of RBAC concepts.
 
 ## Additional Resources
-- [CKA Exam Overview](../docs/overview.md): Detailed information about the exam structure and study tips.
+
 - [RBAC in CKA](../docs/rbac.md): In-depth explanations and best practices for using RBAC in Kubernetes.
 
 By following this study guide, you will be well prepared for the CKA exam and gain a solid understanding of Kubernetes administration.
