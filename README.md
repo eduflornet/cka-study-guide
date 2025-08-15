@@ -46,7 +46,11 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 ## Additional Resources
 
-Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide
+- Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide.
+
+- [Tips for success](../cka-study-guide/docs/cka_tips.md): Detailed information about tips for success.
+
+- [A quick note on editing Pods and Deployments](../cka-study-guide/docs/edit_pods_deployments.md)
 
 For more information and resources, refer to the official Kubernetes documentation and other CKA study materials available online.
 
