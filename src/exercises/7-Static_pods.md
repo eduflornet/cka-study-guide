@@ -100,7 +100,7 @@ Solution:
 Create a pod definition file in the manifests folder. To do this, run the command:
 
 ```shell
-kubectl run --restart=Never --image=busybox static-busybox --dry-run=client -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
+kubectl run --restart=Never --image=busybox static-busybox --dry-run=client -o yaml --command sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml
 ```
 
 10. Edit the image on the static pod you created in the previous task to use busybox:1.28.4
