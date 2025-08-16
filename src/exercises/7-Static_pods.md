@@ -109,7 +109,7 @@ Was image busybox used in the static pod now ?
 
 Solution:
 
-Simply edit the static pod definition file and save it. If that does not re-create the pod, run: ``` kubectl run --restart=Never --image=busybox:1.28.4 static-busybox --dry-run=client -o yaml --command -- sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml ```
+Simply edit the static pod definition file and save it. If that does not re-create the pod, run: ``` kubectl run --restart=Never --image=busybox:1.28.4 static-busybox --dry-run=client -o yaml --command sleep 1000 > /etc/kubernetes/manifests/static-busybox.yaml ```
 
 
 ```shell
