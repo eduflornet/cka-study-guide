@@ -29,24 +29,28 @@ Then create a new pod with your changes using the temporary file
 
 ```shell
 kubectl create -f /tmp/kubectl-edit-ccvrq.yaml
-```yaml
+```
 
 2. The second option is to extract the pod definition in YAML format to a file using the command
+
 ```shell
 kubectl get pod webapp -o yaml > my-new-pod.yaml
 ```
 
 Then make the changes to the exported file using an editor (nano editor). Save the changes
+
 ```shell
 nano my-new-pod.yaml
 ```
 
 Then delete the existing pod
+
 ```shell
 kubectl delete pod webapp
 ```
 
 Then create a new pod with the edited file
+
 ```shell
 kubectl create -f my-new-pod.yaml
 ```

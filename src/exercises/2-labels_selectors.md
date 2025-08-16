@@ -14,12 +14,12 @@ Run the command: ``` kubectl get pods --namespace kube-system ``` to see the sta
 - Delete and recreate the POD if necessary.
 - Delete the existing pod first. Run the below command:
 
-```yaml 
+```shell 
 kubectl delete pod nginx
 ```
 To list and know the names of available nodes on the cluster:
 
-```yaml 
+```shell
 kubectl get nodes
 ```
 Add the nodeName field under the spec section in the nginx.yaml file with node01 as the value:
@@ -40,7 +40,7 @@ Then run the command ``` kubectl create -f nginx.yaml ``` to create a pod from t
 
 To check the status of a nginx pod and to know the node name: 
 
-```yaml
+```shell
 kubectl get pods -o wide
 ```
 

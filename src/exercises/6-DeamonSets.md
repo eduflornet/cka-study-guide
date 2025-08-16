@@ -15,11 +15,13 @@ kube-system    kube-proxy        1         1         1       1            1     
 ```
 
 2. Which namespace is the kube-proxy Daemonset created in?
+
 ```shell
 kube-system
 ```
 
 3. Which of the below is a DaemonSet?
+
 ```shell
 kube-flannel-ds
 ```
@@ -27,6 +29,7 @@ kube-flannel-ds
 4. On how many nodes are the pods scheduled by the DaemonSet kube-proxy?
 Run the command kubectl describe daemonset kube-proxy --namespace=kube-system
 = 1
+
 ```shell
 kubectl describe daemonset kube-proxy -n kube-system
 Name:           kube-proxy
@@ -220,6 +223,7 @@ Then, edit the YAML as follows:
 - Finally, create the DaemonSet using: ``` kubectl create -f fluentd.yaml ```
 
 Practice:
+
 ```shell
 kubectl create deployment elasticsearch -n kube-system --image registry.k8s.io/fluentd-elasticsearch:1.20 --dry-run=client -o yaml > fluentd.yaml
 ```
