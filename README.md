@@ -46,7 +46,7 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 ## Additional Resources
 
-- Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide.
+- Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide, which are practices from some courses.
 
 - [Tips for success](https://github.com/eduflornet/cka-study-guide/blob/main/docs/cka_tips.md): Detailed information about tips for success.
 
