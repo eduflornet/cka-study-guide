@@ -149,11 +149,13 @@ I can see you tried to update the pod by editing the YAML and then using ``` kub
 So, to fix this:
 
 Delete the current elephant pod:
+
 ```shell
 kubectl delete pod elephant
 ```
 
 Recreate it with the updated YAML:
+
 ```shell
 kubectl apply -f elephant.yaml
 ```

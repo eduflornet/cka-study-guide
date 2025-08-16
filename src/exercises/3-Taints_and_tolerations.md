@@ -147,6 +147,7 @@ spec:
     operator: Equal
     effect: NoSchedule
 ```
+
 ```shell
 kubectl apply -f pod-tolerations.yaml
 ```
