@@ -5,7 +5,7 @@ Arise, awake, and stop not till the goal is reached.
 1. Do any taints exist on node01 node?
 hint: Use the kubectl describe command to see the taint property.
 
-```shell
+```bash
 kubectl describe nodes node01 | grep Tain
 ```
 
@@ -16,20 +16,20 @@ kubectl describe nodes node01 | grep Tain
 
 Run the command: 
 
-```shell 
+```bash 
 kubectl taint nodes node01 spray=mortein:NoSchedule 
 ```
 
 3. Create a new pod with the nginx image and pod name as mosquito.
 - Image name: nginx
 
-```shell
+```bash
 kubectl run mosquito --image nginx 
 ```
 
 What is the state of the POD?
 
-```shell 
+```bash 
 kubectl get pods
 NAME       READY   STATUS    RESTARTS   AGE
 mosquito   0/1     Pending   0          45s
@@ -37,7 +37,7 @@ mosquito   0/1     Pending   0          45s
 
 Why do you think the pod is in a pending state?
 
-```shell 
+```bash 
 kubectl describe pod mosquito
 
 Warning  FailedScheduling  2m35s  default-scheduler  0/2 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }, 1 node(s) had untolerated taint {spray: mortein}. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling.
@@ -45,7 +45,7 @@ Warning  FailedScheduling  2m35s  default-scheduler  0/2 nodes are available: 1 
 
 Describe complete:
 
-```shell
+```bash
 Name:             mosquito
 Namespace:        default
 Priority:         0
@@ -95,7 +95,7 @@ Events:
 
 Run the following command and see how to use ```--overrides=```
 
-```shell
+```bash
 kubectl run bee \
   --image=nginx \
   --overrides='
@@ -124,11 +124,11 @@ El pod bee se ejecutará en un nodo que tenga el taint spray=mortein:NoSchedule,
 
 Otra forma es crear un yaml declarativo y editarlo para agregar tolerations y al final aplicar.
 
-```shell
+```bash
 kubectl run bee --image nginx --dry-run='client' -o yaml > pod-toleration.yaml
 ```
 
-```shell
+```bash
 nano pod-toleration.yaml
 ```
 
@@ -148,13 +148,13 @@ spec:
     effect: NoSchedule
 ```
 
-```shell
+```bash
 kubectl apply -f pod-tolerations.yaml
 ```
 
 Observe that the bee pod has been scheduled on node node01 due to the toleration that has been configured for the pod.
 
-```shell
+```bash
 kubectl get pods
 NAME       READY   STATUS    RESTARTS   AGE
 bee        1/1     Running   0          4m50s
@@ -163,7 +163,7 @@ mosquito   0/1     Pending   0          24m
 
 Do you see any taints on controlplane node?
 
-```shell
+```bash
 kubectl describe nodes controlplane | grep Tain
 Taints:             node-role.kubernetes.io/control-plane:NoSchedule
 ```
@@ -185,14 +185,14 @@ This command will untaint the node, removing the NoSchedule effect.
 🛠 Solución
 Si lo que quieres es actualizar o reaplicar ese taint, simplemente añade la opción ```--overwrite```:
 
-```shell
+```bash
 kubectl taint nodes controlplane node-role.kubernetes.io/control-plane:NoSchedule --overwrite
 ```
 
 🧼 Alternativas útiles
 Si lo que querías era quitar ese taint, puedes hacerlo así:
 
-```shell
+```bash
 kubectl taint nodes controlplane node-role.kubernetes.io/control-plane:NoSchedule-
 ```
 
@@ -201,13 +201,13 @@ El guion al final (-) indica que quieres eliminar ese taint.
 Verifica los taints actuales
 Para ver los taints que tiene el nodo:
 
-```shell
+```bash
 kubectl describe node controlplane | grep Taint
 ```
 
 What is the state of the pod mosquito now?
 
-```shell
+```bash
 kubectl get pods mosquito
 NAME       READY   STATUS    RESTARTS   AGE
 mosquito   1/1     Running   0          40m
@@ -216,7 +216,7 @@ mosquito   1/1     Running   0          40m
 Which node is the POD mosquito on now?
 controlplane, look at the result of the describe.
 
-```shell
+```bash
 kubectl describe pod mosquito
 
 Name:             mosquito

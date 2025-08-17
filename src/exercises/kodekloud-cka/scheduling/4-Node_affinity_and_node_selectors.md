@@ -6,7 +6,7 @@ Keep your face always toward the sunshine, and shadows will fall behind you.
 1. How many Labels exist on node node01?
 Run the command ``` kubectl describe node node01 ``` and count the number of labels.
 
-```shell
+```bash
 kubectl describe nodes node01
 Name:               node01
 Roles:              <none>
@@ -29,13 +29,13 @@ amd64
 
 3. Apply a label color=blue to node node01
 
-```shell
+```bash
 kubectl label nodes node01 color=blue
 ```
 
 4. Create a new deployment named blue with the nginx image and 3 replicas.
 
-```shell
+```bash
 kubectl create deployment blue --image nginx --replicas 3
 ```
 
@@ -48,7 +48,7 @@ Check if controlplane and node01 have any taints on them that will prevent the p
 
 So run the following command to check the taints on both nodes.
 
-```shell
+```bash
 
 kubectl describe node controlplane | grep -i taints
 
@@ -80,14 +80,14 @@ Si prefieres evitar el editor por completo, puedes hacerlo en dos pasos:
 
 6.1. Exporta el YAML del deployment:
 
-```shell
+```bash
 kubectl get deployment <nombre-del-deployment> -o yaml > deployment.yaml
 kubectl get deployment blue -o yaml > blue-deployment.yaml
 ```
 
 6.2. Edita el archivo con nano:
 
-```shell
+```bash
 nano blue-deployment.yaml
 ```
 ```yaml
@@ -158,7 +158,7 @@ status:
 
 Haz los cambios que necesites, guarda y luego aplica el nuevo archivo:
 
-```shell
+```bash
 kubectl apply -f blue-deployment.yaml
 ```
 
@@ -167,7 +167,7 @@ kubectl apply -f blue-deployment.yaml
 
 Use the label key - ``` node-role.kubernetes.io/control-plane ``` - which is already set on the controlplane node.
 
-```shell
+```bash
 kubectl create deployment red --image nginx --replicas 2
 kubectl get deploy red -o yaml > red-deployment.yaml 
 ```
@@ -241,6 +241,6 @@ status:
   observedGeneration: 1
 ```
 
-```shell
+```bash
 kubectl apply -f red-deployment.yaml
 ```

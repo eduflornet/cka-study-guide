@@ -4,7 +4,7 @@
 All the questions in this lab can be done imperatively. However, for some questions, you may need to first create the YAML file using imperative methods ```(for example, with --dry-run=client -o yaml). You can then modify the YAML as needed and create the object.
 
 
-```shell
+```bash
 kubectl run redis --image redis:alpine --dry-run=client -o yaml > redis-pod.yaml
 ```
 
@@ -16,7 +16,7 @@ Use imperative commands.
 - Port: 6379
 - Type: ClusterIP
 
-```shell
+```bash
 kubectl expose pod redis --name=redis-service --port=6379 --target-port=6379 --protocol=TCP
 ```
 
@@ -37,13 +37,13 @@ Try to use imperative commands only. Do not create definition files.
 - Image: kodekloud/webapp-color
 - Replicas: 3
 
-```shell
+```bash
 kubectl create deployment webapp --image kodekloud/webapp-color --replicas 3
 ```
 
 Create a new pod called custom-nginx using the nginx image and run it on container port 8080.
 
-```shell
+```bash
 kubectl run custom-nginx --image nginx --port 8080
 ```
 
@@ -51,7 +51,7 @@ Create a new deployment called redis-deploy in the dev-ns namespace with the red
 
 Use imperative commands.
 
-```shell
+```bash
 kubectl create deployment redis-deploy -n dev-ns --image redis --replicas 2
 ```
 
@@ -61,7 +61,7 @@ Then, create a service of type ClusterIP with the same name (httpd) that exposes
 
 Try to do this with as few steps as possible.
 
-```shell
+```bash
 kubectl expose pod httpd --name httpd  --port=80 --target-port=80 --protocol TCP
 ```
 
