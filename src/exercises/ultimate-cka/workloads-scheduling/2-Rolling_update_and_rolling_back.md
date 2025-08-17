@@ -15,7 +15,7 @@ EX:
 
 ```bash
 kubectl create deployment nginx-deploy --image=nginx:1.18 --replicas=4
-
+```
 
 2. Upgrading Deployment with new Image:
 
@@ -32,7 +32,6 @@ Aplicar anotacion manual:
 
 ```bash
 kubectl annotate deployment nginx-deploy kubernetes.io/change-cause="Actualización a nginx:1.91"
-
 ```
 
 3. Checking Rollout Status:
@@ -77,7 +76,6 @@ nginx-deploy   3/4     2            3           15m   nginx        nginx:1.91   
 
 5. Doing previous rollout "undo":
 
-
 kubectl rollout undo deployment/[DEPLOYMENT-NAME]
 
 ```bash
@@ -115,6 +113,7 @@ kubectl get deploy nginx-deploy -o json | grep -i image
                         "image": "nginx:1.18",
                         "imagePullPolicy": "IfNotPresent",
 ```
+
 
 ## Reference
 
