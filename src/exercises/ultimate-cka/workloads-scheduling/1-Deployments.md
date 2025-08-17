@@ -1,5 +1,14 @@
 # Deployments
 
+## Reference                                                        
+* https://www.redhat.com/en/topics/containers/what-is-kubernetes-deployment                                      
+* https://cloud.google.com/kubernetes-engine/docs/concepts/deployment                             
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/                           
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment     
+* https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/                   
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pausing-and-resuming-a-deployment
+
+
 For **dry-run**: It tests to ensure were there any issues. Will NOT create the Object:
 
 kubectl create deployment NAME --image=[IMAGE-NAME] --replicas=[NUMBER] --dry-run=client
@@ -75,10 +84,3 @@ kubectl get rs
 kubectl get pods
 ```
 
-## Reference                                                        
-* https://www.redhat.com/en/topics/containers/what-is-kubernetes-deployment                                      
-* https://cloud.google.com/kubernetes-engine/docs/concepts/deployment                             
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/                           
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment     
-* https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/                   
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#pausing-and-resuming-a-deployment

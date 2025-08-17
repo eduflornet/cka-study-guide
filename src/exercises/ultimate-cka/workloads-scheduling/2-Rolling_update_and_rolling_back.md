@@ -1,5 +1,14 @@
 # Rolling Update and Rolling Back
 
+## Reference
+
+* https://cloud.google.com/kubernetes-engine/docs/how-to/updating-apps
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#checking-rollout-history-of-a-deployment
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-to-a-previous-revision
+* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment
+
+
 In this Demo:
 -------------
 We will create deploy sample application. Next we will update deployment by setting new Image version.
@@ -15,7 +24,7 @@ EX:
 
 ```bash
 kubectl create deployment nginx-deploy --image=nginx:1.18 --replicas=4
-
+```
 
 2. Upgrading Deployment with new Image:
 
@@ -32,7 +41,6 @@ Aplicar anotacion manual:
 
 ```bash
 kubectl annotate deployment nginx-deploy kubernetes.io/change-cause="Actualización a nginx:1.91"
-
 ```
 
 3. Checking Rollout Status:
@@ -77,7 +85,6 @@ nginx-deploy   3/4     2            3           15m   nginx        nginx:1.91   
 
 5. Doing previous rollout "undo":
 
-
 kubectl rollout undo deployment/[DEPLOYMENT-NAME]
 
 ```bash
@@ -116,10 +123,5 @@ kubectl get deploy nginx-deploy -o json | grep -i image
                         "imagePullPolicy": "IfNotPresent",
 ```
 
-## Reference
 
-* https://cloud.google.com/kubernetes-engine/docs/how-to/updating-apps
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#checking-rollout-history-of-a-deployment
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-to-a-previous-revision
-* https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment
+
