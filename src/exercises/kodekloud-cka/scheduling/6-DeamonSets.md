@@ -7,7 +7,7 @@ Losers visualize the penalties of failure, Winners visualize the rewards of succ
 
 Check all namespaces
 
-```shell
+```bash
 kubectl get ds -A
 NAMESPACE      NAME              DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
 kube-flannel   kube-flannel-ds   1         1         1       1            1           <none>                   5m12s
@@ -16,13 +16,13 @@ kube-system    kube-proxy        1         1         1       1            1     
 
 2. Which namespace is the kube-proxy Daemonset created in?
 
-```shell
+```bash
 kube-system
 ```
 
 3. Which of the below is a DaemonSet?
 
-```shell
+```bash
 kube-flannel-ds
 ```
 
@@ -30,7 +30,7 @@ kube-flannel-ds
 Run the command kubectl describe daemonset kube-proxy --namespace=kube-system
 = 1
 
-```shell
+```bash
 kubectl describe daemonset kube-proxy -n kube-system
 Name:           kube-proxy
 Namespace:      kube-system
@@ -86,7 +86,7 @@ Events:
 
   5. What is the image used by the POD deployed by the kube-flannel-ds DaemonSet?
 
-```shell
+```bash
 kubectl describe daemonset kube-flannel-ds -n kube-flannel | grep -i image
     Image:      docker.io/flannel/flannel-cni-plugin:v1.2.0
     Image:      docker.io/flannel/flannel:v0.23.0
@@ -95,7 +95,7 @@ kubectl describe daemonset kube-flannel-ds -n kube-flannel | grep -i image
 
 All information about ``` kube-flannel-ds ```
 
-```shell
+```bash
   kubectl describe daemonset kube-flannel-ds -n kube-flannel
 Name:           kube-flannel-ds
 Namespace:      kube-flannel
@@ -206,7 +206,7 @@ Use the given specifications.
 Solution:
 An easy way to create a DaemonSet is to start by generating a Deployment YAML using:
 
-```shell
+```bash
 kubectl create deployment elasticsearch
 --image=registry.k8s.io/fluentd-elasticsearch:1.20
 -n kube-system --dry-run=client -o yaml > fluentd.yaml
@@ -224,7 +224,7 @@ Then, edit the YAML as follows:
 
 Practice:
 
-```shell
+```bash
 kubectl create deployment elasticsearch -n kube-system --image registry.k8s.io/fluentd-elasticsearch:1.20 --dry-run=client -o yaml > fluentd.yaml
 ```
 
@@ -253,7 +253,7 @@ spec:
         resources: {}
 ```
 
-```shell
+```bash
 kubectl create -f fluentd.yaml 
 daemonset.apps/elasticsearch created
 ```

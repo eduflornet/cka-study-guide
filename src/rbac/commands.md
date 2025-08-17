@@ -6,59 +6,59 @@ This document contains a collection of essential commands related to Role-Based 
 
 ### 1. Create a Role
 To create a role within a specific namespace, use the following command:
-```shell
+```bash
 kubectl create role <role-name> --verb=<verb> --resource=<resource> --namespace=<namespace>
 ```
 Replace `<role-name>`, `<verb>`, `<resource>`, and `<namespace>` with the appropriate values.
 
 ### 2. Create a ClusterRole
 To create a cluster-wide role, use:
-```shell
+```bash
 kubectl create clusterrole <clusterrole-name> --verb=<verb> --resource=<resource>
 ```
 This command allows you to define permissions that apply to all namespaces.
 
 ### 3. Bind a Role to a User
 To bind a role to a user within a namespace, use:
-```shell
+```bash
 kubectl create rolebinding <rolebinding-name> --role=<role-name> --user=<username> --namespace=<namespace>
 ```
 This command associates a specific role with a user in the designated namespace.
 
 ### 4. Bind a ClusterRole to a User
 To bind a cluster role to a user, use:
-```shell
+```bash
 kubectl create clusterrolebinding <clusterrolebinding-name> --clusterrole=<clusterrole-name> --user=<username>
 ```
 This command grants cluster-wide permissions to the specified user.
 
 ### 5. View Roles
 To list all roles in a specific namespace, use:
-```shell
+```bash
 kubectl get roles --namespace=<namespace>
 ```
 
 ### 6. View ClusterRoles
 To list all cluster roles, use:
-```shell
+```bash
 kubectl get clusterroles
 ```
 
 ### 7. Delete a Role
 To delete a specific role, use:
-```shell
+```bash
 kubectl delete role <role-name> --namespace=<namespace>
 ```
 
 ### 8. Delete a ClusterRole
 To delete a cluster role, use:
-```shell
+```bash
 kubectl delete clusterrole <clusterrole-name>
 ```
 
 ### 9. View Role Bindings
 To list all role bindings in a specific namespace, use:
-```shell
+```bash
 kubectl get rolebindings --namespace=<namespace>
 ```
 
@@ -66,7 +66,7 @@ kubectl get rolebindings --namespace=<namespace>
 
 To list all cluster role bindings, use:
 
-```shell
+```bash
 kubectl get clusterrolebindings
 ```
 

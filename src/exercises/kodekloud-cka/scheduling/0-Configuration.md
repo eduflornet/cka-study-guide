@@ -7,7 +7,7 @@ Learning never exhausts the mind.
 Puedes configurar nano como tu editor predeterminado de dos formas:
 🔹 Temporalmente (solo para la sesión actual)
 
-```shell
+```bash
 
 export EDITOR=nano
 
@@ -17,14 +17,14 @@ kubectl edit deployment <nombre-del-deployment>
 #### Permanentemente (para futuras sesiones)
 Agrega esta línea al final de tu archivo ``` ~/.bashrc, ~/.zshrc``` o el que uses:
 
-```shell
+```bash
 export EDITOR=nano
 ```
 
 Después ejecuta:
 
-```shell
-source ~/.bashrc  # o ~/.zshrc según tu shell
+```bash
+source ~/.bashrc  # o ~/.zshrc según tu bash
 ```
 
 #### Acceder al node control-plane dentro de KinD

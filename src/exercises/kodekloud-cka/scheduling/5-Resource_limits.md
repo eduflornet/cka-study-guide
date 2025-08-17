@@ -10,7 +10,7 @@ in the current(default) namespace
 Solucion: 
 Request: cpu: 500m)
 
-```shell
+```bash
 kubectl describe pod rabbit 
 Name:             rabbit
 Namespace:        default
@@ -53,13 +53,13 @@ Once deleted, wait for the pod to fully terminate.
 
 3. Another pod called elephant has been deployed in the default namespace. It fails to get to a running state. Inspect this pod and identify the Reason why it is not running.
 
-```shell
+```bash
 kubectl get pods -A
 NAMESPACE     NAME                                      READY   STATUS             RESTARTS      AGE
 default       elephant                                  0/1     CrashLoopBackOff   1 (10s 
 ```
 
-```shell
+```bash
 kubectl describe pod  elephant
 
 Events:
@@ -82,7 +82,7 @@ Events:
 
 Delete and recreate the pod if required. Do not modify anything other than the required fields.
 
-```shell
+```bash
 kubectl get pod elephant -o yaml > pod-elephant.yaml
 
 nano pod-elephant.yaml
@@ -133,11 +133,11 @@ spec:
   ```
 then run ``` kubectl replace -f elephant.yaml --force ```. This command will delete the existing one first and recreate a new one from the YAML file.
 
-```shell
+```bash
  Error from server (Conflict): error when replacing "elephant.yaml": Operation cannot be fulfilled on pods "elephant": the object has been modified; please apply your changes to the latest version and try again
- ```shell
+ ```bash
 
-```shell
+```bash
 kubectl apply -f elephant.yaml 
 Warning: resource pods/elephant is missing the kubectl.kubernetes.io/last-applied-configuration annotation which is required by kubectl apply. kubectl apply should only be used on resources created declaratively by either kubectl create --save-config or kubectl apply. The missing annotation will be patched automatically.
 
@@ -150,13 +150,13 @@ So, to fix this:
 
 Delete the current elephant pod:
 
-```shell
+```bash
 kubectl delete pod elephant
 ```
 
 Recreate it with the updated YAML:
 
-```shell
+```bash
 kubectl apply -f elephant.yaml
 ```
 
@@ -164,7 +164,7 @@ This approach ensures the memory limit is set to 20Mi as required.
 
 6. Inspect the status of POD. Make sure it's running
 
-```shell
+```bash
 kubectl describe pod elephant
 Name:             elephant
 Namespace:        default

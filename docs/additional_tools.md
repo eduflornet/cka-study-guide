@@ -4,7 +4,7 @@
 [Traefik](https://doc.traefik.io/traefik/getting-started/install-traefik/#use-the-helm-chart): Is a modern HTTP reverse proxy and load balancer made to deploy microservices with ease. The Traefik Helm chart is focused on Traefik deployment configuration, visit [Github](https://github.com/traefik/traefik-helm-chart). 
 
 Example of traefik in a cluster:
-```shell
+```bash
 kubectl get pods -A
 NAMESPACE     NAME                                      READY   STATUS      RESTARTS   AGE
 kube-system   coredns-697968c856-869dn                  1/1     Running     0          11m
