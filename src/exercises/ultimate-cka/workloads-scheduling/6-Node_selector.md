@@ -2,7 +2,8 @@
 
 ## Reference
 
-* https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+- https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+- https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/
 
 In this demo:
 a. We will schedule the Pods to certain nodes, which statisfy the label assigned to the node.
