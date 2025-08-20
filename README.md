@@ -13,7 +13,7 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 - Create and manage Kubernetes clusters using kubeadm
 - Manage the lifecycle of Kubernetes clusters
 - Implement and conﬁgure a highly-available control plane
-- [Use Helm and Kustomize to install cluster components](/cka-study-guide/docs/helm_and_kustomize.md)
+- [Use Helm and Kustomize to install cluster components](https://github.com/eduflornet/cka-study-guide/blob/main/docs/helm_and_kustomize.md)
 - Understand extension interfaces (CNI, CSI, CRI, etc.)
 - Understand CRDs, install and conﬁgure operators
 
