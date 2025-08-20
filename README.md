@@ -54,6 +54,8 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 - [Additional tools](https://github.com/eduflornet/cka-study-guide/blob/main/docs/additional_tools.md)
 
+- [Github KodeKloud CKA Course](https://github.com/kodekloudhub/certified-kubernetes-administrator-course?tab=readme-ov-file)
+
 For more information and resources, refer to the official Kubernetes documentation and other CKA study materials available online.
 
 Good luck with your studies and on your journey to becoming a Certified Kubernetes Administrator!
