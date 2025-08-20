@@ -89,6 +89,88 @@ kubectl get deployment
 kubectl describe deployment demo-nginx
 ```
 
+🧠 Bonus: Overlay para múltiples entornos
+```bash
+mkdir overlays/dev
+cp deployment.yaml overlays/dev/
+```
+
+**overlays/dev/kustomization.yaml**
+```yaml
+resources:
+  - ../deployment.yaml
+nameSuffix: -dev
+replicas: 1
+```
+
+```bash
+kubectl apply -k overlays/dev
+```
+
+📌 Tips for the exam
+✅ Use kubectl explain if you forget the structure of a resource.
+
+✅ Use --dry-run=client -o yaml to quickly generate manifests.
+
+✅ Use kubectl apply -k to apply Kustomize without installing anything.
+
+✅ Use helm show values to understand what you can customize in a chart.
+
+
+Bonus: Use a patch to modify replicas
+1. Recommended Structure
+Let's say you have this deployment.yaml in base/:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+```
+
+2. In your overlay (overlays/dev/), create a patch
+
+**replicas-patch.yaml**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+spec:
+  replicas: 1
+```
+
+3. And your kustomization.yaml in overlays/dev/ should look like this:
+
+```yaml
+resources:
+  - ../../base/deployment.yaml
+
+patchesStrategicMerge:
+  - replicas-patch.yaml
+
+nameSuffix: -dev
+```
+
+4. Apply with Kustomize
+```bash
+kubectl apply -k overlays/dev/
+```
+
 🧠 Key differences (for the exam)
 - Helm -> Package manager -> Templates + values -> Ideal for complex apps with dependencies -> helm install, helm upgrade 	                                
 - Kustomize -> YAML Customizer -> Pure YAML  + transformations -> Environments with variations -> kubectl apply -k
