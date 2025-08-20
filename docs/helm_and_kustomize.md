@@ -90,11 +90,9 @@ kubectl describe deployment demo-nginx
 ```
 
 🧠 Key differences (for the exam)
-Aspect	    Helm	                                Kustomize
-Type	    Package manager	                        YAML Customizer
-Sintaxis	Templates + values	                    pure YAML  + transformations
-Ideal for complex apps with dependencies	        Environments with variations
-CLI	helm install, helm upgrade	                    kubectl apply -k
+- Helm -> Package manager -> Templates + values -> Ideal for complex apps with dependencies -> helm install, helm upgrade 	                                
+- Kustomize -> YAML Customizer -> Pure YAML  + transformations -> Environments with variations -> kubectl apply -k
+
 
 📚 Recommended resources
 
