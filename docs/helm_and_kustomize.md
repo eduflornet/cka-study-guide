@@ -11,7 +11,8 @@
 - Ideal for managing multiple environments (dev, staging, prod) with clean transformations.
 
 🛠️ **HELM**: Practice for the exam
-🔹 1. Installing a component with Helm
+
+1. Installing a component with Helm
 
 ```bash
 helm repo add bitnami https://charts.bitnami.com/bitnami
@@ -26,13 +27,13 @@ helm list
 kubectl get all -l app.kubernetes.io/instance=my-nginx
 ```
 
-🔹 3. Uninstall
+3. Uninstall
 
 ```bash
 helm uninstall my-nginx
 ```
 
-🔹 4. Install with custom values
+4. Install with custom values
 
 ```bash
 helm show values bitnami/nginx > custom-values.yaml
@@ -40,6 +41,7 @@ helm install my-nginx bitnami/nginx -f custom-values.yaml
 ```
 
 🧩 KUSTOMIZE: Practice for the exam
+
 🔹 1. Basic structure
 ```bash
 mkdir kustomize-demo
@@ -176,11 +178,17 @@ kubectl apply -k overlays/dev/
 - Kustomize -> YAML Customizer -> Pure YAML  + transformations -> Environments with variations -> kubectl apply -k
 
 
-📚 Recommended resources
+ ### 📚 Recommended resources
 
 [Kustomize explained with practical examples](https://notes.kodekloud.com/docs/CKA-Certification-Course-Certified-Kubernetes-Administrator/2025-Updates-Kustomize-Basics/kustomization)
 
 [Kustomize demo video for CKA 2025](https://www.youtube.com/watch?v=AKr5tc4nN2w)
+
+https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/
+
+https://www.digitalocean.com/community/tutorials/how-to-manage-your-kubernetes-configurations-with-kustomize
+
+https://www.digitalocean.com/community/tutorials/an-introduction-to-helm-the-package-manager-for-kubernetes
 
 
 
