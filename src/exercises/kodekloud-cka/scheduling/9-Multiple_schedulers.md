@@ -136,7 +136,7 @@ kubectl describe pod kube-scheduler-controlplane --namespace=kube-system | grep 
 Note : Deploying the new scheduler may take a few seconds to reach a running state.
 
 Hint:
-Please utilize the file located at /root/my-scheduler.yaml to establish your own scheduler, ensuring that you update the image accordingly.
+Please utilize the file located at ``` /root/my-scheduler.yaml ``` to establish your own scheduler, ensuring that you update the image accordingly.
 
 ```yaml
 # /root/my-scheduler.yaml
@@ -188,7 +188,7 @@ Run:
 kubectl create -f my-scheduler.yaml and wait sometime for the container to be in running state.
 ```
 
-6. Please modify the provided Pod manifest file located at /root/nginx-pod.yaml to specify that the Pod should be scheduled by your custom scheduler, which is named my-scheduler.
+6. Please modify the provided Pod manifest file located at ``` /root/nginx-pod.yaml ``` to specify that the Pod should be scheduled by your custom scheduler, which is named my-scheduler.
 
 ```bash
 # /root/nginx-pod.yaml
@@ -212,4 +212,3 @@ Run
 ```bash
 kubectl create -f nginx-pod.yaml
 ```
-
