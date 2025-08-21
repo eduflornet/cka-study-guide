@@ -14,7 +14,7 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 - Manage the lifecycle of Kubernetes clusters
 - Implement and conﬁgure a highly-available control plane
 - [Use Helm and Kustomize to install cluster components](https://github.com/eduflornet/cka-study-guide/blob/main/docs/helm_and_kustomize.md)
-- Understand extension interfaces (CNI, CSI, CRI, etc.)
+- [Understand extension interfaces (CNI, CSI, CRI, etc.)](https://github.com/eduflornet/cka-study-guide/blob/main/docs/extension_interfaces_CNI_CSI_CRI).md)
 - Understand CRDs, install and conﬁgure operators
 
 ## 15% - Workloads and Scheduling
