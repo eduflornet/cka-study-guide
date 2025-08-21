@@ -85,7 +85,7 @@ Allows Kubernetes to connect to external storage systems (block, file, etc.).
 🔧 Practical example
 
 ```yaml
-# Crear un PVC que usa un CSI driver
+# Create a PVC that uses a CSI driver
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
