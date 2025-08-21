@@ -2,16 +2,15 @@
 
 Kubelet uses 3 key interfaces to enable flexible container runtime, network, and storage features:
 
-Container Runtime Interface (CRI) – enables the kubelet to use any CRI compliant container runtime to run containers
-Container Network Interface (CNI) – enables the kubelet to use any CNI compliant container networking solution to attach containers to networks
-Container Storage Interface (CSI) – enables the kubelet to use any CSI compliant container storage implementation connect containers to storage volumes
+**Container Runtime Interface (CRI)** - enables the kubelet to use any CRI compliant container runtime to run containers
+**Container Network Interface (CNI)** – enables the kubelet to use any CNI compliant container networking solution to attach containers to networks
+**Container Storage Interface (CSI)** – enables the kubelet to use any CSI compliant container storage implementation connect containers to storage volumes
 These interfaces are implemented as either:
 
 - an executable (CNI)
 - or daemon (CRI, CSI)
 
-**CRI**
-CRI enables pluggable container runtimes in Kubernetes. Kubelet previously had integral support for Docker and Rocket (rkt). CRI Consists of:
+**CRI** enables pluggable container runtimes in Kubernetes. Kubelet previously had integral support for Docker and Rocket (rkt). CRI Consists of:
 
 - Specifications and requirements
 - Defines a gRPC API comprised of two services: 
@@ -19,11 +18,9 @@ CRI enables pluggable container runtimes in Kubernetes. Kubelet previously had i
     - RuntimeService – manage containers (create / start / exec / attach / etc.)
 **Kubelet** calls the container runtime (or a shim) over a Unix socket. Depending on your container runtime of choice, you will need to supply the appropriate value for the ``` --cri-socket``` option:  ``` sudo kubeadm init --cri-socket=unix:///var/run/containerd containerd.sock ```
 
-**CNI**
-Kubernetes kubelets create Pods, which requires the kubelet to configure pod networking. The CNI plugin is selected by passing kubelet the ``` --network-plugin=cni ``` command-line option. **Kubelet** reads a file from ```--cni-conf-dir ``` (default ```/etc/cni/net.d ```) and uses the CNI configuration from that file to set up each pod’s network. The CNI configuration file must match the CNI specification. Any required CNI plugins referenced by the configuration must be present in ``` --cni-bin-dir ``` (default ``` /opt/cni/bin ```). It is the CNI plugin’s responsibility to, among other things, assign IP addresses to pods in the cluster. Different CNI plugins will achieve this in different ways.
+**CNI** Kubernetes kubelets create Pods, which requires the kubelet to configure pod networking. The **CNI** plugin is selected by passing kubelet the ``` --network-plugin=cni ``` command-line option. **Kubelet** reads a file from ```--cni-conf-dir ``` (default ```/etc/cni/net.d ```) and uses the CNI configuration from that file to set up each pod’s network. The CNI configuration file must match the CNI specification. Any required CNI plugins referenced by the configuration must be present in ``` --cni-bin-dir ``` (default ``` /opt/cni/bin ```). It is the CNI plugin’s responsibility to, among other things, assign IP addresses to pods in the cluster. Different CNI plugins will achieve this in different ways.
 
-**CSI**
-CSI is a standard for exposing block and file storage systems to containerized workloads on container orchestration systems like Kubernetes. Allows third parties to write and deploy plugins exposing new storage systems in Kubernetes without ever having to touch the core Kubernetes code.
+**CSI** is a standard for exposing block and file storage systems to containerized workloads on container orchestration systems like Kubernetes. Allows third parties to write and deploy plugins exposing new storage systems in Kubernetes without ever having to touch the core Kubernetes code.
 
 How it works:
 
@@ -36,9 +33,9 @@ It's essential for the CKA exam, as it helps you understand how Kubernetes integ
 🧩 What are Extension Interfaces?
 Kubernetes uses a modular architecture that allows you to extend its capabilities without modifying the core. The three key interfaces you should master are:
 
-CRI (Container Runtime Interface) -> Run containers -> containerd, CRI-O
-CNI (Container Network Interface) -> Connect Pods to networks -> Calico, Cilium, Flannel
-CSI (Container Storage Interface) -> Connect Pods to storage -> OpenEBS, Longhorn, Ceph
+  **CRI (Container Runtime Interface)** -> Run containers -> containerd, CRI-O
+  **CNI (Container Network Interface)** -> Connect Pods to networks -> Calico, Cilium, Flannel
+  **CSI (Container Storage Interface)** -> Connect Pods to storage -> OpenEBS, Longhorn, Ceph
 
 🧱 1. CRI – Container Runtime Interface
 🔹 What does it do?
@@ -47,10 +44,10 @@ Allows the kubelet to communicate with the container runtime (such as containerd
 🔧 Practical example
 
 ```bash
-# Verificar el socket del runtime
+# Check the runtime socket
 ps aux | grep kubelet | grep cri
 
-# Usar containerd como runtime
+# Using containerd as a runtime
 sudo kubeadm init --cri-socket=unix:///var/run/containerd/containerd.sock
 ```
 
@@ -66,10 +63,10 @@ Connects Pods to the cluster network. Assigns IPs, configures routes, and applie
 🔧 Practical example
 
 ```bash
-# Ver configuración CNI
+# View CNI configuration
 ls /etc/cni/net.d/
 
-# Instalar Calico como CNI
+# Install Calico as CNI
 kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
 ```
 
