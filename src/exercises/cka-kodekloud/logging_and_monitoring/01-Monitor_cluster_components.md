@@ -50,7 +50,3 @@ rabbit     152m         250Mi
 8.Identify the POD that consumes the least CPU(cores) in default namespace.
 **lion**
 
-
-
-
-
