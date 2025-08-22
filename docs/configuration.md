@@ -3,17 +3,53 @@
 Learning never exhausts the mind.
 – Leonardo da Vinci
 
+#### 🔄 Habilitar el autocompletado 
+
+```bash 
+echo "source <(kubectl completion bash)" >> ~/.bashrc ```
+
+alias k=kubectl
+
+complete -o default -F __start_kubectl k 
+```
+
+#### ⚙️ Configurar alias Te permite crear comandos cortos para facilitar tu trabajo:
+
+```bash
+alias k='kubectl'
+alias kgp='kubectl get pods'
+alias kgs='kubectl get svc'
+```
+
+Y agrégalos a tu archivo ```~/.bashrc ``` para conservarlos:
+
+```bash
+echo "alias k='kubectl'" >> ~/.bashrc
+```
+
+#### 🌐 Familiarizarse con la configuración del clúster Antes del examen, asegúrate de saber:
+
+Leer y editar archivos kubeconfig ``` (~/.kube/config) ```
+Usar kubectl config view para entender el estado
+Cambiar entre contextos:
+
+```kubectl config use-context <context-name> ```
+
+
+📂 Crear directorios de trabajo Organiza tus archivos y manifiestos:
+```bash
+mkdir -p ~/cka-labs/pods
+cd ~/cka-labs
+```
+
 #### Cambiar el editor por defecto a nano
 Puedes configurar nano como tu editor predeterminado de dos formas:
 🔹 Temporalmente (solo para la sesión actual)
 
 ```bash
-
 export EDITOR=nano
-
-kubectl edit deployment <nombre-del-deployment>
-
 ```
+
 #### Permanentemente (para futuras sesiones)
 Agrega esta línea al final de tu archivo ``` ~/.bashrc, ~/.zshrc``` o el que uses:
 
