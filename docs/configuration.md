@@ -6,12 +6,11 @@ Learning never exhausts the mind.
 #### 🔄 Habilitar el autocompletado 
 
 ```bash 
-echo "source <(kubectl completion bash)" >> ~/.bashrc ```
-
+echo "source <(kubectl completion bash)" >> ~/.bashrc
 alias k=kubectl
-
 complete -o default -F __start_kubectl k 
 ```
+
 
 #### ⚙️ Configurar alias Te permite crear comandos cortos para facilitar tu trabajo:
 
