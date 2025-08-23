@@ -58,7 +58,8 @@ sql01            ClusterIP   10.43.13.232    <none>        3306/TCP         79s
 webapp-service   NodePort    10.43.120.248   <none>        8080:30080/TCP   79s
 ```
 
-[](/cka-study-guide/src/exercises/cka-kodekloud/05-Application-Lifecycle-Management/04-Secrets.png)
+
+![Webapp MySQL Architecture](04-Secrets.png)
 
 6. The reason the application is failed is because we have not created the secrets yet. Create a new secret named db-secret with the data given below.
 
