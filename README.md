@@ -3,6 +3,21 @@
 ## CKA Exam Overview
 Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This project is designed to help you prepare for the CKA exam by providing structured documentation, practices, notes, commands, and exercises related to key topics about [CKA Curriculum CNCF official](https://github.com/cncf/curriculum).  
 
+## Resources
+
+- Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide, which are practices from some courses.
+
+- [Configuration](https://github.com/eduflornet/cka-study-guide/blob/main/docs/configuration.md)
+
+- [Tips for success](https://github.com/eduflornet/cka-study-guide/blob/main/docs/cka_tips.md)
+
+- [A quick note on editing Pods and Deployments](https://github.com/eduflornet/cka-study-guide/blob/main/docs/edit_pods_deployments.md)
+
+- [Additional tools](https://github.com/eduflornet/cka-study-guide/blob/main/docs/additional_tools.md)
+
+- [Github KodeKloud CKA Course](https://github.com/kodekloudhub/certified-kubernetes-administrator-course?tab=readme-ov-file)
+
+- [Github Exercises bmuschko CKA Crash Course](https://github.com/bmuschko/cka-crash-course/tree/master/exercises)
 
 #### CKA Curriculum 1.33 (effective August 2025)
 
@@ -43,22 +58,6 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 - Monitor cluster and application resource usage
 - Manage and evaluate container output streams
 - Troubleshoot services and networking
-
-## Additional Resources
-
-- Here I leave [exercises](https://github.com/eduflornet/cka-study-guide/blob/main/src/exercises/) that I have been creating throughout this guide, which are practices from some courses.
-
-- [Configuration](https://github.com/eduflornet/cka-study-guide/blob/main/docs/configuration.md)
-
-- [Tips for success](https://github.com/eduflornet/cka-study-guide/blob/main/docs/cka_tips.md)
-
-- [A quick note on editing Pods and Deployments](https://github.com/eduflornet/cka-study-guide/blob/main/docs/edit_pods_deployments.md)
-
-- [Additional tools](https://github.com/eduflornet/cka-study-guide/blob/main/docs/additional_tools.md)
-
-- [Github KodeKloud CKA Course](https://github.com/kodekloudhub/certified-kubernetes-administrator-course?tab=readme-ov-file)
-
-- [Github Exercises bmuschko CKA Crash Course](https://github.com/bmuschko/cka-crash-course/tree/master/exercises)
 
 For more information and resources, refer to the official Kubernetes documentation and other CKA study materials available online.
 

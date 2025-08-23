@@ -17,7 +17,9 @@ ubuntu-sleeper   1/1     Running   0          5m15s
 
 2. What is the command used to run the pod ubuntu-sleeper?
 
-``` k get pod ubuntu-sleeper -o yaml ```
+```bash 
+k get pod ubuntu-sleeper -o yaml 
+```
 
 ```yaml
 apiVersion: v1
@@ -250,10 +252,7 @@ spec:
 
 Assume the image was created from the Dockerfile in this directory.
 
-```
-command: ["python", "app.py"]
-args: ["--color", "pink"]
-```
+**python app.py --color= pink**
 
 ```dockerfile
 FROM python:3.6-alpine
@@ -310,3 +309,20 @@ spec:
   restartPolicy: Never 
 ```
 
+```bash
+k describe blue
+
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  19m   default-scheduler  Successfully assigned default/blue to controlplane
+  Normal  Pulling    19m   kubelet            Pulling image "busybox"
+  Normal  Pulled     19m   kubelet            Successfully pulled image "busybox" in 363ms (363ms including waiting). Image size: 2223685 bytes.
+  Normal  Created    19m   kubelet            Created container: init-myservice
+  Normal  Started    19m   kubelet            Started container init-myservice
+  Normal  Pulled     19m   kubelet            Container image "busybox:1.28" already present on machine
+  Normal  Created    19m   kubelet            Created container: green-container-1
+  Normal  Started    19m   kubelet            Started container green-container-1
+```
+
+Run the command kubectl describe pod blue and check the state field of the initContainer.
