@@ -182,7 +182,7 @@ Events:
   Normal  ScalingReplicaSet  9m17s  deployment-controller  Scaled down replica set nginx-deployment-647677fc66 from 7 to 7
 ```
 
-10. Since the HPA was failing due to the resource field missing in the nginx-deployment, the resource field has been updated in /root/deployment.yml. Update the nginx-deployment using this manifest. Watch the changes made to the nginx-deployment by the HPA after upgrading by using the kubectl get hpa --watch command.
+10. Since the HPA was failing due to the resource field missing in the ``` nginx-deployment ```, the resource field has been updated in ``` /root/deployment.yml ```. Update the ``` nginx-deployment ``` using this manifest. Watch the changes made to the ``` nginx-deployment ``` by the HPA after upgrading by using the ``` kubectl get hpa --watch ``` command.
 
 
 ```bash
