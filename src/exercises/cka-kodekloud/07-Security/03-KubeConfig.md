@@ -207,11 +207,13 @@ Add one of these lines to export the variable:
 ```bash
 export KUBECONFIG=/root/my-kube-config
 ```
-# OR
+OR
+
 ```bash
 export KUBECONFIG=~/my-kube-config
 ```
-# OR
+OR
+
 ```bash
 export KUBECONFIG=$HOME/my-kube-config
 ```
