@@ -123,6 +123,3 @@ After save into a file, run the command kubectl create -f <file-name>.yaml to cr
 
 
 
-
-
-
