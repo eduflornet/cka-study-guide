@@ -15,6 +15,10 @@ Welcome to the CKA (Certified Kubernetes Administrator) Study Guide! This projec
 
 - [Additional tools](https://github.com/eduflornet/cka-study-guide/blob/main/docs/additional_tools.md)
 
+- [Github David Holder CKA Study Guide](https://github.com/David-VTUK/CKA-StudyGuide/tree/master/cka-study-guide/docs)
+
+- [Github Harry CKA Notes](https://github.com/anouarharrou/The-Ultimate-CKA-Guide/tree/main/My%20Note)
+
 - [Github KodeKloud CKA Course](https://github.com/kodekloudhub/certified-kubernetes-administrator-course?tab=readme-ov-file)
 
 - [Github Exercises bmuschko CKA Crash Course](https://github.com/bmuschko/cka-crash-course/tree/master/exercises)
