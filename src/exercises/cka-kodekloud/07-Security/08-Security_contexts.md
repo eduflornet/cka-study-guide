@@ -142,6 +142,7 @@ To delete the existing pod:
 ```bash
 kubectl delete po ubuntu-sleeper
 ```
+
 After that apply solution manifest file to add capabilities in ubuntu-sleeper pod:
 
 ```yaml
