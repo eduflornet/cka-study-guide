@@ -81,11 +81,12 @@ PolicyRule:
 
 7. A new user michelle joined the team. She will be focusing on the nodes in the cluster. Create the required ClusterRoles and ClusterRoleBindings so she gets access to the nodes.
 
-Use the command kubectl create to create a clusterrole and clusterrolebinding for user michelle to grant access to the nodes.
+Use the command ``` kubectl create ``` to create a clusterrole and clusterrolebinding for user michelle to grant access to the nodes.
 After that test the access using the command kubectl auth can-i list nodes --as michelle.
 
 Solution manifest file to create a clusterrole and clusterrolebinding for michelle user:
 
+```yaml
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -109,9 +110,11 @@ roleRef:
   kind: ClusterRole
   name: node-admin
   apiGroup: rbac.authorization.k8s.io
-
+```
 
 After save into a file, run the command kubectl create -f <file-name>.yaml to create a resources from definition file.
+
+
 
 
 
