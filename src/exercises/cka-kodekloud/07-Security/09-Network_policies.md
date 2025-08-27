@@ -75,7 +75,7 @@ The hostname for the external service is its Kubernetes Service name: **payroll-
 
 Access it using **payroll-service** as host and **8080** as port from the Internal Application's UI
 
-![Network Policies Architecture](09-Network_policies_1.png)
+![Network Policies Architecture](img/09-Network_policies_1.png)
 
 Only internal application can access payroll service
 
@@ -168,7 +168,7 @@ kube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP,9153/TCP   18m
 
 - MySQL Port: 3306
 
-![Network Policies Architecture](09-Network_policies_2.png)
+![Network Policies Architecture](img/09-Network_policies_2.png)
 
 
 
