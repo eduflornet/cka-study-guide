@@ -200,8 +200,8 @@ Set the DB_Host environment variable to use mysql.payroll.
 
 Run the command: 
 
-```
-kubectl edit deploy webapp
+```bash 
+kubectl get deploy webapp -o yaml webapp.yaml
 
 k delete deploy webapp --force
 
@@ -210,6 +210,7 @@ k delete deploy webapp --force
 and correct the DB_Host value.
 
 ```yaml
+# webapp.yaml
 spec:
       containers:
       - env:
