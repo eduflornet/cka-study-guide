@@ -6,6 +6,11 @@ For success attitude is equally important as ability.
 
 – Harry F.Bank
 
+## Resource
+
+[https://gateway-api.sigs.k8s.io/](https://gateway-api.sigs.k8s.io/)
+
+
 1. Which API resource is used to define a Gateway in Kubernetes?
 
 **Gateway**
@@ -360,3 +365,6 @@ Status:
       Section Name:  http
 Events:              <none>
 ```
+
+https://30080-port-wllbrz5elrprwav6.labs.kodekloud.com/
+
