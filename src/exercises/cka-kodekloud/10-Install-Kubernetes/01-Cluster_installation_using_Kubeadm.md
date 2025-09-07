@@ -4,9 +4,15 @@ If you really look closely, most overnight successes took a long time.
 
 – Steve Jobs
 
+
 Success is not final, failure is not fatal: it is the courage to continue that counts.
 
 – Winston Churchill
+
+
+The only thing standing between you and outrageous success is continuous progress.
+
+– Dan Waldschmidt
 
 #### Resources
 
@@ -400,7 +406,275 @@ We are using a custom PodCIDR (172.17.0.0/16) instead of the default 10.244.0.0/
 - Is Flannel using "eth0" interface for inter-host communication ?
 
 
+On the controlplane node, run the following set of commands to deploy the network plugin:
 
+Download the original YAML file and save it as kube-flannel.yml:
+curl -LO https://raw.githubusercontent.com/flannel-io/flannel/v0.20.2/Documentation/kube-flannel.yml
+Open the kube-flannel.yml file using a text editor.
+
+We are using a custom PodCIDR (172.17.0.0/16) instead of the default 10.244.0.0/16 when bootstrapping the Kubernetes cluster. However, the Flannel manifest by default is configured to use 10.244.0.0/16 as its network, which does not align with the specified PodCIDR. To resolve this, we need to update the Network field in the kube-flannel-cfg ConfigMap to match the custom PodCIDR defined during cluster initialization.
+
+```bash
+net-conf.json: |
+    {
+      "Network": "10.244.0.0/16", # Update this to match the custom PodCIDR
+      "Backend": {
+        "Type": "vxlan"
+      }
+```
+
+Locate the args section within the kube-flannel container definition. It should look like this:
+```bash
+  args:
+  - --ip-masq
+  - --kube-subnet-mgr
+```
+Add the additional argument ``` - --iface=eth0 ``` to the existing list of arguments.
+
+Now apply the modified manifest ``` kube-flannel.yml ``` file using kubectl:
+
+```bash
+kubectl apply -f kube-flannel.yml
+```
+
+After applying the manifest, wait for all the pods to become in the Ready state. You can use the watch command to monitor the pod status:
+
+```bash
+watch kubectl get pods -A
+```
+
+Example of expected pods:
+
+```bash
+controlplane ~ ➜  kubectl get pods -A
+NAMESPACE      NAME                                   READY   STATUS    RESTARTS   AGE
+kube-flannel   kube-flannel-ds-gc5kf                  1/1     Running   0          54s
+kube-flannel   kube-flannel-ds-mtjd6                  1/1     Running   0          54s
+kube-system    coredns-668d6bf9bc-7lf7s               1/1     Running   0          3m31s
+kube-system    coredns-668d6bf9bc-jl8t6               1/1     Running   0          3m31s
+kube-system    etcd-controlplane                      1/1     Running   0          3m37s
+kube-system    kube-apiserver-controlplane            1/1     Running   0          3m37s
+kube-system    kube-controller-manager-controlplane   1/1     Running   0          3m37s
+kube-system    kube-proxy-t5wrt                       1/1     Running   0          3m31s
+kube-system    kube-proxy-trmhs                       1/1     Running   0          3m8s
+kube-system    kube-scheduler-controlplane            1/1     Running   0          3m37s
+After all the pods are in the Ready state, the status of both nodes should now become Ready:
+
+controlplane ~ ➜  kubectl get nodes 
+NAME           STATUS   ROLES           AGE   VERSION 
+controlplane   Ready    control-plane   15m   v1.33.0 
+node01         Ready    <none>          15m   v1.33.0 
+
+```
+
+```yaml
+# kube-flannel.yml
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: kube-flannel
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flannel
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: flannel
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: flannel
+subjects:
+- kind: ServiceAccount
+  name: flannel
+  namespace: kube-flannel
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: flannel
+  namespace: kube-flannel
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: kube-flannel-cfg
+  namespace: kube-flannel
+  labels:
+    tier: node
+    app: flannel
+data:
+  cni-conf.json: |
+    {
+      "name": "cbr0",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "flannel",
+          "delegate": {
+            "hairpinMode": true,
+            "isDefaultGateway": true
+          }
+        },
+        {
+          "type": "portmap",
+          "capabilities": {
+            "portMappings": true
+          }
+        }
+      ]
+    }
+  net-conf.json: |
+    {
+      "Network": "192.168.57.19",
+      "Backend": {
+        "Type": "vxlan"
+      }
+    }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-flannel-ds
+  namespace: kube-flannel
+  labels:
+    tier: node
+    app: flannel
+spec:
+  selector:
+    matchLabels:
+      app: flannel
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: flannel
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      serviceAccountName: flannel
+      initContainers:
+      - name: install-cni-plugin
+       #image: flannelcni/flannel-cni-plugin:v1.1.0 for ppc64le and mips64le (dockerhub limitations may apply)
+        image: docker.io/rancher/mirrored-flannelcni-flannel-cni-plugin:v1.1.0
+        command:
+        - cp
+        args:
+        - -f
+        - /flannel
+        - /opt/cni/bin/flannel
+        volumeMounts:
+        - name: cni-plugin
+          mountPath: /opt/cni/bin
+      - name: install-cni
+       #image: flannelcni/flannel:v0.20.2 for ppc64le and mips64le (dockerhub limitations may apply)
+        image: docker.io/rancher/mirrored-flannelcni-flannel:v0.20.2
+        command:
+        - cp
+        args:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/10-flannel.conflist
+        volumeMounts:
+        - name: cni
+          mountPath: /etc/cni/net.d
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+      containers:
+      - name: kube-flannel
+       #image: flannelcni/flannel:v0.20.2 for ppc64le and mips64le (dockerhub limitations may apply)
+        image: docker.io/rancher/mirrored-flannelcni-flannel:v0.20.2
+        command:
+        - /opt/bin/flanneld
+        args:
+        - --ip-masq
+        - --kube-subnet-mgr
+        - --iface=eth0
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+          limits:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          privileged: false
+          capabilities:
+            add: ["NET_ADMIN", "NET_RAW"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: EVENT_QUEUE_DEPTH
+          value: "5000"
+ volumeMounts:
+        - name: run
+          mountPath: /run/flannel
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
+      volumes:
+      - name: run
+        hostPath:
+          path: /run/flannel
+      - name: cni-plugin
+        hostPath:
+          path: /opt/cni/bin
+      - name: cni
+        hostPath:
+          path: /etc/cni/net.d
+      - name: flannel-cfg
+        configMap:
+          name: kube-flannel-cfg
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
+```
 
 
 
