@@ -24,7 +24,19 @@ To actually deploy a Gateway that routes traffic, you must create a Gateway reso
 
 2. What is the purpose of the allowedRoutes field in a Gateway?
 
-especificar que namespaces pueden attach al gateway
+allowedRoutes en un recurso Gateway del Gateway API de Kubernetes cumple una función clave en el control de seguridad y segmentación de tráfico entre namespaces.
+
+🎯 Propósito de allowedRoutes
+El campo allowedRoutes define qué rutas (HTTPRoute, TCPRoute, etc.) pueden adjuntarse a un listener específico del Gateway, y desde qué namespaces se permite esa asociación.
+
+Esto permite establecer un modelo de confianza bidireccional entre el Gateway y las rutas, especialmente útil en entornos multi-equipo o multi-tenant donde se desea controlar qué aplicaciones pueden usar un Gateway compartido.
+
+🧩 ¿Por qué es importante?
+Seguridad: Evita que cualquier ruta en el clúster se conecte libremente al Gateway.
+
+Segmentación: Permite que equipos trabajen en namespaces separados sin interferencias.
+
+Control granular: Puedes permitir rutas solo del mismo namespace, de todos, o de namespaces con ciertas etiquetas.
 
 The allowedRoutes field in a Gateway listener determines which namespaces and types of Routes (like HTTPRoute, TCPRoute, etc.) are allowed to attach to that Gateway.
 
@@ -53,7 +65,14 @@ spec:
 
 4. How does a GatewayClass differ from a Gateway?
 
-?
+🧠 In simple terms:
+GatewayClass is like a blueprint or policy that says: “All Gateways of this class will be managed by this controller and follow these rules.”
+
+Gateway is the actual object that listens for traffic and routes it, based on the configuration defined in the GatewayClass.
+
+🔗 Relationship
+A Gateway must reference a GatewayClass via the spec.gatewayClassName field. This tells Kubernetes which controller should manage the Gateway and how it should behave
+
 
 5. What is the primary advantage of using Gateway API over Ingress?
 
