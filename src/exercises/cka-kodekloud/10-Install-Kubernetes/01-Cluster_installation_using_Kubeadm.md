@@ -171,6 +171,8 @@ sudo apt-mark hold kubelet kubeadm kubectl
 Esto evita que futuras actualizaciones del sistema modifiquen las versiones instaladas de estos componentes, lo cual es importante para mantener la compatibilidad del clúster.
 
 
+Finally:
+
 - Sysctl settings applied on controlplane?
 - Sysctl settings applied on node01?
 - kubeadm installed on controlplane?
