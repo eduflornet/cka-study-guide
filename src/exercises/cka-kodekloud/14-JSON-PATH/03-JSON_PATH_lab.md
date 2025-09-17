@@ -45,7 +45,12 @@ Using jpath (requires pipe and npm installed)
 kubectl get pods -o json | jpath '$.items[*].metadata.name'
 ```
 
+🧠 Which one should you choose?
+jsonpath: Ideal for simple scripts and when you want to avoid external dependencies. But its syntax can be limited and somewhat rigid.
 
+**jq:** Perfect for advanced processing, filtering, and data transformation. Widely used by administrators and DevOps.
+
+jpath: Useful if you're already familiar with JSONPath and prefer that syntax, but it's not as common or as powerful as jq.
 
 
 1. Develop a JSON PATH query to extract the kind of object. A file named **q1.json** is provided in the terminal. Your task is to develop a JSON path query to extract the expected output from the Source Data.
