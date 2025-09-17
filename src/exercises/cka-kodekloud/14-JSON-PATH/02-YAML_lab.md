@@ -1,4 +1,4 @@
-# Lab YAML
+# YAML Lab
 
 A winner is a dreamer who never gives up.
 
