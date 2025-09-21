@@ -1,4 +1,4 @@
-# Advamced Kubectl Commands
+# Advanced Kubectl Commands with jsonpath
 
 Success is not final, failure is not fatal: it is the courage to continue that counts.
 
