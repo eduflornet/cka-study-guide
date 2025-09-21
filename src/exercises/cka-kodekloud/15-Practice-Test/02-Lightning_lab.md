@@ -2,17 +2,29 @@
 
 #### Reference
 
-https://kubernetes.io/docs/reference/setup-tools/kubeadm/kubeadm-upgrade/
+[kubeadm-upgrade](https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/)
 
 
 You don’t understand anything until you learn it more than one way.
 
 – Marvin Minsky
 
+The beautiful thing about learning is that nobody can take it away from you.
+
+Picture yourself as an indomitable power filled with positive attitude and faith that you are achieving your goals.
+
+– Napolean Hill
+
+You teach best what you most need to learn.
+
+– Richard Bach
+
 1. Upgrade the current version of kubernetes from 1.32.0 to 1.33.0 exactly using the kubeadm utility. Make sure that the upgrade is carried out one node at a time starting with the controlplane node. To minimize downtime, the deployment gold-nginx should be rescheduled on an alternate node before upgrading each node.
 
 
 Upgrade controlplane node first and drain node node01 before upgrading it. Pods for gold-nginx should run on the controlplane node subsequently.
+
+**Solution**
 
 ```bash
 kubeadm upgrade plan
@@ -72,6 +84,39 @@ systemctl daemon-reload
 systemctl restart kubelet
 ```
 
+**Kubernetes upgrade verification**
+
+```bash
+kubectl get nodes
+kubectl get nodes -o wide
+```
+
+Check the kubelet version on each node
+
+```bash
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.nodeInfo.kubeletVersion}{"\n"}{end}'
+```
+
+You should see v1.33.0 on all nodes.
+
+```bash
+kubeadm version
+```
+
+Check the API server version:
+
+```bash
+kubectl version --short
+```
+
+Both Client Version and Server Version should show v1.33.0.
+
+Verify that the gold-nginx deployment is running on the correct node:
+
+```bash
+kubectl get pods -o wide -l app=gold-nginx
+```
+
 2. Print the names of all deployments in the admin2406 namespace in the following format:
 
 DEPLOYMENT   CONTAINER_IMAGE   READY_REPLICAS   NAMESPACE
@@ -101,7 +146,7 @@ kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.na
 
 
 
-3. A kubeconfig file called admin.kubeconfig has been created in /root/CKA. There is something wrong with the configuration. Troubleshoot and fix it.
+3. A kubeconfig file called **admin.kubeconfig** has been created in /root/CKA. There is something wrong with the configuration. Troubleshoot and fix it.
 
 ```yaml
 # CKA/admin.kubeconfig
@@ -149,7 +194,7 @@ Verify that the certificate data is complete and copied correctly (not truncated
 
 Make sure the username, context, and cluster names are consistent.
 
-4. Create a new deployment called nginx-deploy, with image nginx:1.16 and 1 replica.
+4. Create a new deployment called **nginx-deploy**, with image **nginx:1.16** and 1 replica.
 Next, upgrade the deployment to version 1.17 using rolling update and add the annotation message
 Updated nginx image to 1.17.
 
@@ -175,7 +220,7 @@ kubectl get deployments
 3. Update image to nginx:1.17 using rolling update
 
 ```bash
-kubectl set image deployment/nginx-deploy nginx-deploy=nginx:1.17
+kubectl set image deployment/nginx-deploy nginx=nginx:1.17
 ```
 
 4. Add annotationn required
@@ -195,15 +240,164 @@ kubectl describe deployment nginx-deploy
 
 Important: Do not alter the persistent volume.
 
+1. Check the status of the deployment and pods:
+
+```bash
+kubectl -n alpha get deployment alpha-mysql
+kubectl -n alpha get pods
+kubectl -n alpha describe pod <alpha-mysql-85765c4c56-cv5mq >
+```
+
+2. Look for error messages related to volumes, PVCs, or environment variables.
+
+Check if a **PersistentVolumeClaim** (PVC) exists and is linked to the PV alpha-pv:
+
+```bash
+kubectl -n alpha get pvc
+kubectl get pv
+```
+
+The PVC used by the deployment must be linked to the PV alpha-pv.
+
+If the deployment doesn't have a PVC or is misconfigured, edit it:
+
+```bash
+kubectl -n alpha edit deployment alpha-mysql
+```
+
+Make sure the volume section and volumeMount are like this (adjust the PVC name if necessary):
+
+```yaml
+spec:
+  containers:
+  - name: <nombre-del-contenedor>
+    ...
+    volumeMounts:
+    - name: mysql-storage
+      mountPath: /var/lib/mysql
+    env:
+    - name: MYSQL_ALLOW_EMPTY_PASSWORD
+      value: "1"
+  volumes:
+  - name: mysql-storage
+    persistentVolumeClaim:
+      claimName: alpha-pvc
+```
+
+The claimName must match the PVC linked to the PV alpha-pv.
+If the PVC doesn't exist, create it as follows:
+
+```yaml
+# pvc-file.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alpha-pvc
+  namespace: alpha
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: alpha-pv
+```
+
+Apply PVC:
+
+```bash
+kubectl apply -f <pvc-file>.yaml
+```
+
+Restart the deployment if you made changes:
+
+```bash
+kubectl -n alpha rollout restart deployment alpha-mysql
+```
+
+Verify that the pod is running:
+
+```bash
+kubectl -n alpha get pods
+```
+
+Explanation:
+The problem is usually that the deployment doesn't have the persistent volume or environment variable configured correctly.
+The deployment must mount the PVC (which is linked to the PV **alpha-pv**) in ``` /var/lib/mysql ```.
+The environment variable ``` MYSQL_ALLOW_EMPTY_PASSWORD=1 ``` is required for MySQL to start without a root password.
+You shouldn't modify the PV, just make sure the PVC uses it correctly.
+
 6. Take the backup of ETCD at the location ``` /opt/etcd-backup.db ``` on the controlplane node.
+
+**Step-by-Step Solution**
+Access the controlplane node (if you're not already there).
+
+Check the location of the etcdctl binary.
+It's usually in **etcdctl**.
+
+Get the etcd connection parameters.
+You can find them in the etcd manifest:
+
+```bash
+cat /etc/kubernetes/manifests/etcd.yaml
+```
+
+Find the certificate paths and the endpoint address.
+
+Run the backup.
+Use the following command (adjust the paths if they are different on your cluster):
+
+```bash
+ETCDCTL_API=3 etcdctl snapshot save /opt/etcd-backup.db   --endpoints=https://127.0.0.1:2379   --cacert=/etc/kubernetes/pki/etcd/ca.crt   --cert=/etc/kubernetes/pki/etcd/server.crt   --key=/etc/kubernetes/pki/etcd/server.key
+```
+
+```bash
+--endpoints: etcd address (usually https://127.0.0.1:2379)
+--cacert, --cert, --key: Paths to certificates
+```
+Verify that the ``` /opt/etcd-backup.db ``` file was created correctly:
+
+```bash
+ls -lh /opt/etcd-backup.db
+```
 
 7. Create a pod called **secret-1401** in the **admin1401** namespace using the busybox image. The container within the pod should be called **secret-admin** and should sleep for **4800** seconds.
 
 The container should mount a read-only secret volume called secret-volume at the path ``` /etc/secret-volume ```. The secret being mounted has already been created for you and is called dotfile-secret.
 
+**Solution**
 
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secret-1401
+  namespace: admin1401
+spec:
+  containers:
+  - name: secret-admin
+    image: busybox
+    command: ["sleep", "4800"]
+    volumeMounts:
+    - name: secret-volume
+      mountPath: /etc/secret-volume
+      readOnly: true
+  volumes:
+  - name: secret-volume
+    secret:
+      secretName: dotfile-secret
+```
 
+Steps to apply it:
+Save the above manifest to a file, for example: secret-1401.yaml.
+Apply the manifest:
 
+```bash
+kubectl apply -f secret-1401.yaml
+```
 
+Explanation:
 
-
+The pod is created in the **admin1401** namespace.
+The container is named **secret-admin**, uses the **busybox** image, and runs sleep **4800**.
+The secret-volume volume mounts the secret **dotfile-secret** in ``` /etc/secret-volume ``` as read-only.
