@@ -19,6 +19,14 @@ You teach best what you most need to learn.
 
 – Richard Bach
 
+If you can't explain it simply you don't understand it well enough.
+
+– Albert Einstein
+
+ I am experienced enough to do this. I am knowledgeable enough to do this. I am prepared enough to do this. I am mature enough to do this. I am brave enough to do this.
+
+– Alexandria Ocasio-Cortez
+
 1. Upgrade the current version of kubernetes from 1.32.0 to 1.33.0 exactly using the kubeadm utility. Make sure that the upgrade is carried out one node at a time starting with the controlplane node. To minimize downtime, the deployment gold-nginx should be rescheduled on an alternate node before upgrading each node.
 
 
@@ -26,63 +34,111 @@ Upgrade controlplane node first and drain node node01 before upgrading it. Pods 
 
 **Solution**
 
-```bash
-kubeadm upgrade plan
+https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
 
-kubeadm upgrade apply v1.33.0
-```
+Select: Upgrading a kubeadm cluster from 1.32 to 1.33
 
-To seamlessly transition from Kubernetes v1.32 to v1.33 and gain access to the packages specific to the desired Kubernetes minor version, follow these essential steps during the upgrade process. This ensures that your environment is appropriately configured and aligned with the features and improvements introduced in Kubernetes v1.33.
+Select [Changing the package repository](https://v1-33.docs.kubernetes.io/docs/tasks/administer-cluster/kubeadm/change-package-repository/)
 
-On the controlplane node:
+Select [official announcement](https://v1-33.docs.kubernetes.io/blog/2023/08/15/pkgs-k8s-io-introduction/)
 
-Use any text editor you prefer to open the file that defines the Kubernetes apt repository.
+How to migrate to the Kubernetes community-owned repositories?
 
-```bash
-vim /etc/apt/sources.list.d/kubernetes.list
-```
-Update the version in the URL to the next available minor release, i.e v1.33.
+Replace the apt repository definition so that apt points to the new repository instead of the Google-hosted repository. Make sure to replace the Kubernetes minor version in the command below with the minor version that you're currently using:
 
 ```bash
-deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 ```
 
-After making changes, save the file and exit from your text editor. Proceed with the next instruction.
+Download the public signing key for the Kubernetes package repositories. The same signing key is used for all repositories, so you can disregard the version in the URL:
 
 ```bash
-apt update
-
-apt-cache madison kubeadm
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 ```
 
-Based on the version information displayed by apt-cache madison, it indicates that for Kubernetes version 1.33.0, the available package version is 1.33.0-1.1. Therefore, to install kubeadm for Kubernetes v1.33.0, use the following command:
+Update the apt package index:
 
 ```bash
-apt-get install kubeadm=1.33.0-1.1
+sudo apt-get update
 ```
 
-Run the following command to upgrade the Kubernetes cluster.
+Close the page and come back to the begining
+
+Upgrading control plane nodes
+
 
 ```bash
-kubeadm upgrade plan v1.33.0
-
-kubeadm upgrade apply v1.33.0
+# replace x in 1.33.x-* with the latest patch version
+sudo apt-mark unhold kubeadm && \
+sudo apt-get update && sudo apt-get install -y kubeadm='1.33.0-1.1*' && \
+sudo apt-mark hold kubeadm
 ```
 
-Note that the above steps can take a few minutes to complete.
-
-Now, upgrade the Kubelet version. Also, mark the node (in this case, the "controlplane" node) as schedulable.
+Verify that the download works and has the expected version:
 
 ```bash
-apt-get install kubelet=1.33.0-1.1
+kubeadm version
 ```
-Run the following commands to refresh the systemd configuration and apply changes to the Kubelet service:
+
+Verify the upgrade plan:
 
 ```bash
-systemctl daemon-reload
+sudo kubeadm upgrade plan
 
-systemctl restart kubelet
+sudo kubeadm upgrade apply v1.33.0
 ```
+
+For the other control plane nodes
+
+Same as the first control plane node but use:
+
+```bash
+sudo kubeadm upgrade node
+```
+
+instead of:
+
+```bash
+sudo kubeadm upgrade apply
+```
+
+Drain the node
+Prepare the node for maintenance by marking it unschedulable and evicting the workloads:
+
+
+```bash
+# replace <node-to-drain> with the name of your node you are draining
+kubectl drain controlplane --ignore-daemonsets
+```
+
+Upgrade kubelet and kubectl 
+# replace x in 1.33.x-* with the latest patch version
+
+```bash
+sudo apt-mark unhold kubelet kubectl && \
+sudo apt-get update && sudo apt-get install -y kubelet='1.33.0-1.1*' kubectl='1.33.0-1.1' && \
+sudo apt-mark hold kubelet kubectl
+```
+
+Restart the kubelet:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+```
+
+Uncordon the node
+Bring the node back online by marking it schedulable:
+
+```bash
+# replace <node-to-uncordon> with the name of your node
+kubectl uncordon controlplane
+```
+
+**Now it's time to update the worker node with the same steps.**
+
+Finally
+
 
 **Kubernetes upgrade verification**
 
@@ -205,31 +261,31 @@ Task: Upgrade the version of the deployment to 1:17
 
 **Solution**
 
-1. Create initial deployment
+4.1. Create initial deployment
 
 ```bash
 kubectl create deployment nginx-deploy --image=nginx:1.16 --replicas=1
 ```
 
-2. Verify deployment
+4.2. Verify deployment
 
 ```bash
 kubectl get deployments
 ```
 
-3. Update image to nginx:1.17 using rolling update
+4.3. Update image to nginx:1.17 using rolling update
 
 ```bash
 kubectl set image deployment/nginx-deploy nginx=nginx:1.17
 ```
 
-4. Add annotationn required
+4.4. Add annotationn required
 
 ```bash
 kubectl annotate deployment nginx-deploy message='Updated nginx image to 1.17'
 ```
 
-5. Verify that the update and annotation have been applied
+4.5. Verify that the update and annotation have been applied
 
 ```bash
 kubectl describe deployment nginx-deploy
@@ -238,9 +294,85 @@ kubectl describe deployment nginx-deploy
 5. A new deployment called **alpha-mysql** has been deployed in the **alpha** namespace. However, the pods are not running. Troubleshoot and fix the issue. The deployment should make use of the persistent volume **alpha-pv** to be mounted at ``` /var/lib/mysql ``` and should use the environment variable ``` MYSQL_ALLOW_EMPTY_PASSWORD=1 ``` to make use of an empty root password.
 
 
+Analisis
+
+Errores comunes entre PV y PVC
+El nombre del PVC en el deployment no coincide con el nombre real del PVC creado.
+El PVC no está en el namespace correcto (debe ser alpha).
+El PVC no solicita el mismo tamaño, modo de acceso o storageClass que el PV ofrece.
+El campo volumeName del PVC no coincide con el nombre del PV.
+El PV no tiene el campo claimRef actualizado (esto lo hace Kubernetes automáticamente al bindear).
+El PV está en estado Released o Failed y no en Bound.
+
+¿Qué debes revisar en los YAML?
+
+```yaml
+# alpha-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: alpha-pv
+  namespace: alpha
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data
+  persistentVolumeReclaimPolicy: Retain
+```
 Important: Do not alter the persistent volume.
 
-1. Check the status of the deployment and pods:
+
+```yaml
+# alpha-claim.yaml 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alpha-pvc
+  namespace: alpha
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: alpha-pv
+```
+
+¿Cuál podría ser el problema?
+El deployment está usando un PVC con un nombre diferente al definido en alpha-claim.yaml.
+El PVC no tiene el campo volumeName: alpha-pv y por lo tanto no se liga específicamente a ese PV.
+El PVC está en otro namespace diferente a alpha.
+El tamaño o accessModes no coinciden entre PV y PVC.
+El deployment no monta el PVC correctamente en /var/lib/mysql.
+El PV ya está ligado a otro PVC o está en estado Released/Failed.
+
+Solución recomendada
+Asegúrate de que el PVC tenga:
+
+El mismo nombre que el usado en el deployment (claimName: alpha-pvc).
+El campo volumeName: alpha-pv.
+El namespace correcto (alpha).
+El mismo tamaño y accessModes que el PV.
+Verifica que el deployment monte el PVC así:
+
+```yaml
+volumes:
+- name: mysql-storage
+  persistentVolumeClaim:
+    claimName: alpha-pvc
+```
+
+Verifica el estado de los recursos:
+
+```bash
+kubectl -n alpha get pvc
+kubectl get pv
+```
+
+5.1. Check the status of the deployment and pods:
 
 ```bash
 kubectl -n alpha get deployment alpha-mysql
@@ -248,7 +380,7 @@ kubectl -n alpha get pods
 kubectl -n alpha describe pod <alpha-mysql-85765c4c56-cv5mq >
 ```
 
-2. Look for error messages related to volumes, PVCs, or environment variables.
+5.2. Look for error messages related to volumes, PVCs, or environment variables.
 
 Check if a **PersistentVolumeClaim** (PVC) exists and is linked to the PV alpha-pv:
 
