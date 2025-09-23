@@ -27,6 +27,8 @@ If you can't explain it simply you don't understand it well enough.
 
 – Alexandria Ocasio-Cortez
 
+You are exactly where you need to be. You are not behind.
+
 1. Upgrade the current version of kubernetes from 1.32.0 to 1.33.0 exactly using the kubeadm utility. Make sure that the upgrade is carried out one node at a time starting with the controlplane node. To minimize downtime, the deployment gold-nginx should be rescheduled on an alternate node before upgrading each node.
 
 
@@ -190,17 +192,8 @@ Write the result to the file /opt/admin2406_data.
 **answer2**
 
 ```bash
-kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\t"}{.status.readyReplicas}{"\t"}{.metadata.namespace}{"\n"}{end}' | sort > /opt/admin2406_data
+kubectl -n admin2406 get deployment -o custom-columns=DEPLOYMENT:.metadata.name,CONTAINER_IMAGE:.spec.template.spec.containers[].image,READY_REPLICAS:.status.readyReplicas,NAMESPACE:.metadata.namespace --sort-by=.metadata.name > /opt/admin2406_data
 ```
-
-With the header as in the example, use:
-
-```bash
-echo -e "DEPLOYMENT\tCONTAINER_IMAGE\tREADY_REPLICAS\tNAMESPACE" > /opt/admin2406_data
-kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\t"}{.status.readyReplicas}{"\t"}{.metadata.namespace}{"\n"}{end}' | sort >> /opt/admin2406_data
-```
-
-
 
 3. A kubeconfig file called **admin.kubeconfig** has been created in /root/CKA. There is something wrong with the configuration. Troubleshoot and fix it.
 
@@ -209,7 +202,7 @@ kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.na
 apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJQ0FHVENLRjRNYzB3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBNU1Ua3hPREk0TkROYUZ3MHpOVEE1TVRjeE9ETXpORE5hTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURJYW5HTWFhVDdrQW1jV1AvMEgxMlZWZnhlTWpBeXlDYWlpU3BNK2NFeklOaXB6NlFDUExPZnVXdWcKRE16QnlhRUx3MnVLY2s0YmIveHZ4N3JPYUJBZUZ2UHN6VXZUQVE3OVNUQVJDNWZFaUYwZldkSlVKL0ZrNUhBOQp5NUNVUnB4MDFIN1h3R2wwNlBUZ3pFWk9UcXNZNE9TMUdKeit5RkdKK3MreDNiUHZlTFh5K3FIbDJCSU9DMWR0CmFSTUNGc3FGYlNkcHMxVStDLzZMcnhWMmZralk0TlZVS3dObmUzUlpuZlQxTlhmV1Q3TnI5NmdaNWhzSStFcFQKTktjeUNNUGZWSXhCK3RUOHM4UkFPcS9zR1VoT1I1L1NBOHBib3dPYmpvUkVSNzBBNDVnUFgxNHFBUVFCOUVCVQpycEZTdUJNQkZ1SGhLcFNqelZHQWljb05pbU12QWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUTmk3STBPR2JBNUFBUmRlbUlYRlBMdWFONXlqQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQ2NyYy9WZnpDOApLUnp0WEplOUFISkxwd0xTYTlETHBFVUNyTVFpczg5QUx0Z0JxVGRsOUdZdXE1NkZYR0s3T1htckpZSTlsR3VmCmVsMTlpQitqVGJ1MHhRVW5KOTNVS2dBWStSNHN1QjFxbXQ0QzlwUnIrN1NMbkZzbE5QZnBrSzdrRmdGdjJONjEKcXdzcmJ1SHRjRGJyak05OFNoZytYZ1MwZDRiMTY0NDFvdVJOcVVXMzZQTTg4QWtFT0w3c3lGL3RlTDBBTE82ZwpSV093ZS9Bb1JyS2s4dmhhMnpjcnpUZHYxZ0NqK25mczV3alVKWDdrQi9aNUVzTUQ1K1NzTjR2d2VoOHdJVE1FCjlONktoNy9QK2xpODhpcThHaDEwNTlVVEpVVklQMkFmcUh1SXRZWDU1L0g5MkhLT0h5YXgzKzU3WVh4ZFk3cGwKWFU4K1dmbmZjaXN4Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    certificate-authority-data: LS0tLS1...
     server: https://controlplane:4380
   name: kubernetes
 contexts:
@@ -224,11 +217,60 @@ users:
 - name: kubernetes-admin
   user:
     client-certificate-data: L...
-    client-key-data: LS....
+    client-key-data: LS...
 ```
 
 **Solution**
-Explanation of the most common error in this context:
+
+```bash
+kubectl get pods --kubeconfig /root/CKA/admin.kubeconfig
+```
+
+Notice the error message.
+
+Now look at the default kubeconfig for the correct setting.
+
+```bash
+cat ~/.kube/config
+```
+
+```yaml
+# ~/.kube/config
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJT...
+    server: https://controlplane:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: LS...
+```
+
+Make the correction
+
+The API server port (4380) isn't the standard port (**6443**)
+
+```bash
+nano /root/CKA/admin.kubeconfig
+```
+
+Test
+
+```bash
+kubectl get pods --kubeconfig /root/CKA/admin.kubeconfig
+```
+
+**Explanation of the most common error in this context:**
 
 In most cases, the error in a kubeconfig file is usually in one of these places:
 
@@ -249,6 +291,7 @@ server: https://<controlplane-IP-or-hostname>:6443
 Verify that the certificate data is complete and copied correctly (not truncated).
 
 Make sure the username, context, and cluster names are consistent.
+
 
 4. Create a new deployment called **nginx-deploy**, with image **nginx:1.16** and 1 replica.
 Next, upgrade the deployment to version 1.17 using rolling update and add the annotation message
@@ -293,18 +336,84 @@ kubectl describe deployment nginx-deploy
 
 5. A new deployment called **alpha-mysql** has been deployed in the **alpha** namespace. However, the pods are not running. Troubleshoot and fix the issue. The deployment should make use of the persistent volume **alpha-pv** to be mounted at ``` /var/lib/mysql ``` and should use the environment variable ``` MYSQL_ALLOW_EMPTY_PASSWORD=1 ``` to make use of an empty root password.
 
+**Solution**
 
-Analisis
+Important: Do not alter the persistent volume.
 
-Errores comunes entre PV y PVC
-El nombre del PVC en el deployment no coincide con el nombre real del PVC creado.
-El PVC no está en el namespace correcto (debe ser alpha).
-El PVC no solicita el mismo tamaño, modo de acceso o storageClass que el PV ofrece.
-El campo volumeName del PVC no coincide con el nombre del PV.
-El PV no tiene el campo claimRef actualizado (esto lo hace Kubernetes automáticamente al bindear).
-El PV está en estado Released o Failed y no en Bound.
+Inspect the deployment to check the environment variable is set. Here I'm using yq which is like jq but for YAML to not have to view the entire deployment YAML, just the section beneath containers in the deployment spec.
 
-¿Qué debes revisar en los YAML?
+
+```bash
+kubectl get deployment -n alpha alpha-mysql  -o yaml | yq e .spec.template.spec.containers -
+```
+
+```yaml
+- env:
+    - name: MYSQL_ALLOW_EMPTY_PASSWORD
+      value: "1"
+  image: mysql:5.6
+  imagePullPolicy: Always
+  name: mysql
+  ports:
+    - containerPort: 3306
+      protocol: TCP
+  resources: {}
+  terminationMessagePath: /dev/termination-log
+  terminationMessagePolicy: File
+  volumeMounts:
+    - mountPath: /var/lib/mysql
+      name: mysql-data
+
+```
+
+Find out why the deployment does not have minimum availability. We'll have to find out the name of the deployment's pod first, then describe the pod to see the error.
+
+```bash
+kubectl get pods -n alpha
+kubectl describe pod -n alpha alpha-mysql-85765c4c56-7bdnr
+
+Volumes:
+  mysql-data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  mysql-alpha-pvc
+    ReadOnly:   false
+  kube-api-access-xq6kq:
+
+Events:
+  Type     Reason            Age                From               Message
+  ----     ------            ----               ----               -------
+  Warning  FailedScheduling  28m                default-scheduler  0/2 nodes are available: persistentvolumeclaim "mysql-alpha-pvc" not found. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling.
+  Warning  FailedScheduling  12m (x3 over 22m)  default-scheduler  0/2 nodes are available: persistentvolumeclaim "mysql-alpha-pvc" not found. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling.
+```
+
+```bash
+kubectl get pv alpha-pv
+```
+
+**Reference**
+
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolumeclaim
+
+
+```yaml
+# mysql-alpha-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-alpha-pvc
+  namespace: alpha
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: slow
+```
+
+```bash
+ k apply -f mysql-alpha-pvc.yaml 
+```
 
 ```yaml
 # alpha-pv.yaml
@@ -341,31 +450,22 @@ spec:
   volumeName: alpha-pv
 ```
 
-¿Cuál podría ser el problema?
-El deployment está usando un PVC con un nombre diferente al definido en alpha-claim.yaml.
-El PVC no tiene el campo volumeName: alpha-pv y por lo tanto no se liga específicamente a ese PV.
-El PVC está en otro namespace diferente a alpha.
-El tamaño o accessModes no coinciden entre PV y PVC.
-El deployment no monta el PVC correctamente en /var/lib/mysql.
-El PV ya está ligado a otro PVC o está en estado Released/Failed.
+What could be the problem?
+The deployment is using a PVC with a different name than the one defined in **alpha-claim.yaml**.
+The PVC does not have the volumeName: alpha-pv field and is therefore not specifically bound to that PV.
+The PVC is in a namespace other than **alpha**.
+The **size** or accessModes do not match between the PV and PVC.
+The deployment does not mount the PVC correctly in /var/lib/mysql.
+The PV is already bound to another PVC or is in the Released/Failed state.
 
-Solución recomendada
-Asegúrate de que el PVC tenga:
+Recommended solution:
+Make sure the PVC has:
 
-El mismo nombre que el usado en el deployment (claimName: alpha-pvc).
-El campo volumeName: alpha-pv.
-El namespace correcto (alpha).
-El mismo tamaño y accessModes que el PV.
-Verifica que el deployment monte el PVC así:
+The same name as the one used in the deployment (claimName: alpha-pvc).
+The volumeName: alpha-pv field.
+The correct namespace (alpha).
 
-```yaml
-volumes:
-- name: mysql-storage
-  persistentVolumeClaim:
-    claimName: alpha-pvc
-```
-
-Verifica el estado de los recursos:
+Check the status of the resources:
 
 ```bash
 kubectl -n alpha get pvc
@@ -377,7 +477,7 @@ kubectl get pv
 ```bash
 kubectl -n alpha get deployment alpha-mysql
 kubectl -n alpha get pods
-kubectl -n alpha describe pod <alpha-mysql-85765c4c56-cv5mq >
+kubectl -n alpha describe pod alpha-mysql-85765c4c56-7bdnr >
 ```
 
 5.2. Look for error messages related to volumes, PVCs, or environment variables.
@@ -388,6 +488,8 @@ Check if a **PersistentVolumeClaim** (PVC) exists and is linked to the PV alpha-
 kubectl -n alpha get pvc
 kubectl get pv
 ```
+
+**Extra recomendation**
 
 The PVC used by the deployment must be linked to the PV alpha-pv.
 
@@ -402,7 +504,7 @@ Make sure the volume section and volumeMount are like this (adjust the PVC name 
 ```yaml
 spec:
   containers:
-  - name: <nombre-del-contenedor>
+  - name: container-name
     ...
     volumeMounts:
     - name: mysql-storage
@@ -416,48 +518,7 @@ spec:
       claimName: alpha-pvc
 ```
 
-The claimName must match the PVC linked to the PV alpha-pv.
-If the PVC doesn't exist, create it as follows:
 
-```yaml
-# pvc-file.yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: alpha-pvc
-  namespace: alpha
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
-  volumeName: alpha-pv
-```
-
-Apply PVC:
-
-```bash
-kubectl apply -f <pvc-file>.yaml
-```
-
-Restart the deployment if you made changes:
-
-```bash
-kubectl -n alpha rollout restart deployment alpha-mysql
-```
-
-Verify that the pod is running:
-
-```bash
-kubectl -n alpha get pods
-```
-
-Explanation:
-The problem is usually that the deployment doesn't have the persistent volume or environment variable configured correctly.
-The deployment must mount the PVC (which is linked to the PV **alpha-pv**) in ``` /var/lib/mysql ```.
-The environment variable ``` MYSQL_ALLOW_EMPTY_PASSWORD=1 ``` is required for MySQL to start without a root password.
-You shouldn't modify the PV, just make sure the PVC uses it correctly.
 
 6. Take the backup of ETCD at the location ``` /opt/etcd-backup.db ``` on the controlplane node.
 
