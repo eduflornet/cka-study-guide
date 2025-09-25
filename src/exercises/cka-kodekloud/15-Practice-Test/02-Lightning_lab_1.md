@@ -347,6 +347,12 @@ Inspect the deployment to check the environment variable is set. Here I'm using 
 kubectl get deployment -n alpha alpha-mysql  -o yaml | yq e .spec.template.spec.containers -
 ```
 
+**yq**: This is a tool for processing YAML files from the command line (similar to jq for JSON).
+
+**e** .spec.template.spec.containers: Specifically extracts the .spec.template.spec.containers field from YAML.
+
+**-**: Indicates that the input is coming from stdin (the output of the previous command).
+
 ```yaml
 - env:
     - name: MYSQL_ALLOW_EMPTY_PASSWORD
@@ -489,36 +495,6 @@ kubectl -n alpha get pvc
 kubectl get pv
 ```
 
-**Extra recomendation**
-
-The PVC used by the deployment must be linked to the PV alpha-pv.
-
-If the deployment doesn't have a PVC or is misconfigured, edit it:
-
-```bash
-kubectl -n alpha edit deployment alpha-mysql
-```
-
-Make sure the volume section and volumeMount are like this (adjust the PVC name if necessary):
-
-```yaml
-spec:
-  containers:
-  - name: container-name
-    ...
-    volumeMounts:
-    - name: mysql-storage
-      mountPath: /var/lib/mysql
-    env:
-    - name: MYSQL_ALLOW_EMPTY_PASSWORD
-      value: "1"
-  volumes:
-  - name: mysql-storage
-    persistentVolumeClaim:
-      claimName: alpha-pvc
-```
-
-
 
 6. Take the backup of ETCD at the location ``` /opt/etcd-backup.db ``` on the controlplane node.
 
@@ -535,6 +511,27 @@ You can find them in the etcd manifest:
 cat /etc/kubernetes/manifests/etcd.yaml
 ```
 
+Take the backup of ETCD at the location /opt/etcd-backup.db on the controlplane node.
+This question is a bit poorly worded. It requires us to make a backup of etcd and store the backup at the given location.
+
+Know that the certificates we need for authentication of etcdctl are located in ``` /etc/kubernetes/pki/etcd ```
+
+```bash
+ETCDCTL_API='3' etcdctl snapshot save \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  /opt/etcd-backup.db
+```
+
+Verify that the ``` /opt/etcd-backup.db ``` file was created correctly:
+
+```bash
+ls -lh /opt/etcd-backup.db
+```
+
+**Tips for the exam**
+
 Find the certificate paths and the endpoint address.
 
 Run the backup.
@@ -548,11 +545,7 @@ ETCDCTL_API=3 etcdctl snapshot save /opt/etcd-backup.db   --endpoints=htt
 --endpoints: etcd address (usually https://127.0.0.1:2379)
 --cacert, --cert, --key: Paths to certificates
 ```
-Verify that the ``` /opt/etcd-backup.db ``` file was created correctly:
 
-```bash
-ls -lh /opt/etcd-backup.db
-```
 
 7. Create a pod called **secret-1401** in the **admin1401** namespace using the busybox image. The container within the pod should be called **secret-admin** and should sleep for **4800** seconds.
 
@@ -560,33 +553,50 @@ The container should mount a read-only secret volume called secret-volume at the
 
 **Solution**
 
+Create a pod called secret-1401 in the admin1401 namespace using the busybox image....
+The container within the pod should be called secret-admin and should sleep for 4800 seconds.
+
+The container should mount a read-only secret volume called secret-volume at the path ``` /etc/secret-volume ```. The secret being mounted has already been created for you and is called **dotfile-secret**.
+
+Use imperative command to get a starter manifest
+
+```bash
+kubectl run secret-1401 -n admin1401 --image busybox --dry-run=client -o yaml --command -- sleep 4800 > admin.yaml
+```
+
 ```yaml
+# admin.yaml
 apiVersion: v1
 kind: Pod
 metadata:
+  creationTimestamp: null
+  labels:
+    run: secret-1401
   name: secret-1401
   namespace: admin1401
 spec:
-  containers:
-  - name: secret-admin
-    image: busybox
-    command: ["sleep", "4800"]
-    volumeMounts:
-    - name: secret-volume
-      mountPath: /etc/secret-volume
-      readOnly: true
   volumes:
   - name: secret-volume
     secret:
       secretName: dotfile-secret
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: busybox
+    name: secret-admin
+    volumeMounts:
+    - name: secret-volume
+      readOnly: true
+      mountPath: /etc/secret-volume
 ```
 
 Steps to apply it:
-Save the above manifest to a file, for example: secret-1401.yaml.
+Save the above manifest to a file, for example: admin.yaml.
 Apply the manifest:
 
 ```bash
-kubectl apply -f secret-1401.yaml
+kubectl apply -f admin.yaml
 ```
 
 Explanation:
@@ -594,3 +604,4 @@ Explanation:
 The pod is created in the **admin1401** namespace.
 The container is named **secret-admin**, uses the **busybox** image, and runs sleep **4800**.
 The secret-volume volume mounts the secret **dotfile-secret** in ``` /etc/secret-volume ``` as read-only.
+
