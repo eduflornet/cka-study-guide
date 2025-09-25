@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"PersistentVolume","metadata":{"annotations":{},"name":"alpha-pv"},"spec":{"accessModes":["ReadWrit>
+  creationTimestamp: "2025-09-22T10:54:22Z"
+  finalizers:
+  - kubernetes.io/pv-protection
+  name: alpha-pv
+  resourceVersion: "4573"
+  uid: 8fe376c1-0a54-43d5-ae20-173b04d50c9a
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /opt/pv-1
+    type: ""
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: slow
+  volumeMode: Filesystem
+status:
+  lastPhaseTransitionTime: "2025-09-22T10:54:22Z"
+  phase: Available

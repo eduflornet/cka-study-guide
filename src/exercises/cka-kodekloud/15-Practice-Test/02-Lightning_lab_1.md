@@ -19,6 +19,16 @@ You teach best what you most need to learn.
 
 – Richard Bach
 
+If you can't explain it simply you don't understand it well enough.
+
+– Albert Einstein
+
+ I am experienced enough to do this. I am knowledgeable enough to do this. I am prepared enough to do this. I am mature enough to do this. I am brave enough to do this.
+
+– Alexandria Ocasio-Cortez
+
+You are exactly where you need to be. You are not behind.
+
 1. Upgrade the current version of kubernetes from 1.32.0 to 1.33.0 exactly using the kubeadm utility. Make sure that the upgrade is carried out one node at a time starting with the controlplane node. To minimize downtime, the deployment gold-nginx should be rescheduled on an alternate node before upgrading each node.
 
 
@@ -26,63 +36,111 @@ Upgrade controlplane node first and drain node node01 before upgrading it. Pods 
 
 **Solution**
 
-```bash
-kubeadm upgrade plan
+https://kubernetes.io/docs/tasks/administer-cluster/kubeadm/kubeadm-upgrade/
 
-kubeadm upgrade apply v1.33.0
-```
+Select: Upgrading a kubeadm cluster from 1.32 to 1.33
 
-To seamlessly transition from Kubernetes v1.32 to v1.33 and gain access to the packages specific to the desired Kubernetes minor version, follow these essential steps during the upgrade process. This ensures that your environment is appropriately configured and aligned with the features and improvements introduced in Kubernetes v1.33.
+Select [Changing the package repository](https://v1-33.docs.kubernetes.io/docs/tasks/administer-cluster/kubeadm/change-package-repository/)
 
-On the controlplane node:
+Select [official announcement](https://v1-33.docs.kubernetes.io/blog/2023/08/15/pkgs-k8s-io-introduction/)
 
-Use any text editor you prefer to open the file that defines the Kubernetes apt repository.
+How to migrate to the Kubernetes community-owned repositories?
 
-```bash
-vim /etc/apt/sources.list.d/kubernetes.list
-```
-Update the version in the URL to the next available minor release, i.e v1.33.
+Replace the apt repository definition so that apt points to the new repository instead of the Google-hosted repository. Make sure to replace the Kubernetes minor version in the command below with the minor version that you're currently using:
 
 ```bash
-deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.33/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 ```
 
-After making changes, save the file and exit from your text editor. Proceed with the next instruction.
+Download the public signing key for the Kubernetes package repositories. The same signing key is used for all repositories, so you can disregard the version in the URL:
 
 ```bash
-apt update
-
-apt-cache madison kubeadm
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.33/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 ```
 
-Based on the version information displayed by apt-cache madison, it indicates that for Kubernetes version 1.33.0, the available package version is 1.33.0-1.1. Therefore, to install kubeadm for Kubernetes v1.33.0, use the following command:
+Update the apt package index:
 
 ```bash
-apt-get install kubeadm=1.33.0-1.1
+sudo apt-get update
 ```
 
-Run the following command to upgrade the Kubernetes cluster.
+Close the page and come back to the begining
+
+Upgrading control plane nodes
+
 
 ```bash
-kubeadm upgrade plan v1.33.0
-
-kubeadm upgrade apply v1.33.0
+# replace x in 1.33.x-* with the latest patch version
+sudo apt-mark unhold kubeadm && \
+sudo apt-get update && sudo apt-get install -y kubeadm='1.33.0-1.1*' && \
+sudo apt-mark hold kubeadm
 ```
 
-Note that the above steps can take a few minutes to complete.
-
-Now, upgrade the Kubelet version. Also, mark the node (in this case, the "controlplane" node) as schedulable.
+Verify that the download works and has the expected version:
 
 ```bash
-apt-get install kubelet=1.33.0-1.1
+kubeadm version
 ```
-Run the following commands to refresh the systemd configuration and apply changes to the Kubelet service:
+
+Verify the upgrade plan:
 
 ```bash
-systemctl daemon-reload
+sudo kubeadm upgrade plan
 
-systemctl restart kubelet
+sudo kubeadm upgrade apply v1.33.0
 ```
+
+For the other control plane nodes
+
+Same as the first control plane node but use:
+
+```bash
+sudo kubeadm upgrade node
+```
+
+instead of:
+
+```bash
+sudo kubeadm upgrade apply
+```
+
+Drain the node
+Prepare the node for maintenance by marking it unschedulable and evicting the workloads:
+
+
+```bash
+# replace <node-to-drain> with the name of your node you are draining
+kubectl drain controlplane --ignore-daemonsets
+```
+
+Upgrade kubelet and kubectl 
+# replace x in 1.33.x-* with the latest patch version
+
+```bash
+sudo apt-mark unhold kubelet kubectl && \
+sudo apt-get update && sudo apt-get install -y kubelet='1.33.0-1.1*' kubectl='1.33.0-1.1' && \
+sudo apt-mark hold kubelet kubectl
+```
+
+Restart the kubelet:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart kubelet
+```
+
+Uncordon the node
+Bring the node back online by marking it schedulable:
+
+```bash
+# replace <node-to-uncordon> with the name of your node
+kubectl uncordon controlplane
+```
+
+**Now it's time to update the worker node with the same steps.**
+
+Finally
+
 
 **Kubernetes upgrade verification**
 
@@ -134,17 +192,8 @@ Write the result to the file /opt/admin2406_data.
 **answer2**
 
 ```bash
-kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\t"}{.status.readyReplicas}{"\t"}{.metadata.namespace}{"\n"}{end}' | sort > /opt/admin2406_data
+kubectl -n admin2406 get deployment -o custom-columns=DEPLOYMENT:.metadata.name,CONTAINER_IMAGE:.spec.template.spec.containers[].image,READY_REPLICAS:.status.readyReplicas,NAMESPACE:.metadata.namespace --sort-by=.metadata.name > /opt/admin2406_data
 ```
-
-With the header as in the example, use:
-
-```bash
-echo -e "DEPLOYMENT\tCONTAINER_IMAGE\tREADY_REPLICAS\tNAMESPACE" > /opt/admin2406_data
-kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.template.spec.containers[0].image}{"\t"}{.status.readyReplicas}{"\t"}{.metadata.namespace}{"\n"}{end}' | sort >> /opt/admin2406_data
-```
-
-
 
 3. A kubeconfig file called **admin.kubeconfig** has been created in /root/CKA. There is something wrong with the configuration. Troubleshoot and fix it.
 
@@ -153,7 +202,7 @@ kubectl -n admin2406 get deployments -o=jsonpath='{range .items[*]}{.metadata.na
 apiVersion: v1
 clusters:
 - cluster:
-    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJQ0FHVENLRjRNYzB3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRBNU1Ua3hPREk0TkROYUZ3MHpOVEE1TVRjeE9ETXpORE5hTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURJYW5HTWFhVDdrQW1jV1AvMEgxMlZWZnhlTWpBeXlDYWlpU3BNK2NFeklOaXB6NlFDUExPZnVXdWcKRE16QnlhRUx3MnVLY2s0YmIveHZ4N3JPYUJBZUZ2UHN6VXZUQVE3OVNUQVJDNWZFaUYwZldkSlVKL0ZrNUhBOQp5NUNVUnB4MDFIN1h3R2wwNlBUZ3pFWk9UcXNZNE9TMUdKeit5RkdKK3MreDNiUHZlTFh5K3FIbDJCSU9DMWR0CmFSTUNGc3FGYlNkcHMxVStDLzZMcnhWMmZralk0TlZVS3dObmUzUlpuZlQxTlhmV1Q3TnI5NmdaNWhzSStFcFQKTktjeUNNUGZWSXhCK3RUOHM4UkFPcS9zR1VoT1I1L1NBOHBib3dPYmpvUkVSNzBBNDVnUFgxNHFBUVFCOUVCVQpycEZTdUJNQkZ1SGhLcFNqelZHQWljb05pbU12QWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJUTmk3STBPR2JBNUFBUmRlbUlYRlBMdWFONXlqQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQ2NyYy9WZnpDOApLUnp0WEplOUFISkxwd0xTYTlETHBFVUNyTVFpczg5QUx0Z0JxVGRsOUdZdXE1NkZYR0s3T1htckpZSTlsR3VmCmVsMTlpQitqVGJ1MHhRVW5KOTNVS2dBWStSNHN1QjFxbXQ0QzlwUnIrN1NMbkZzbE5QZnBrSzdrRmdGdjJONjEKcXdzcmJ1SHRjRGJyak05OFNoZytYZ1MwZDRiMTY0NDFvdVJOcVVXMzZQTTg4QWtFT0w3c3lGL3RlTDBBTE82ZwpSV093ZS9Bb1JyS2s4dmhhMnpjcnpUZHYxZ0NqK25mczV3alVKWDdrQi9aNUVzTUQ1K1NzTjR2d2VoOHdJVE1FCjlONktoNy9QK2xpODhpcThHaDEwNTlVVEpVVklQMkFmcUh1SXRZWDU1L0g5MkhLT0h5YXgzKzU3WVh4ZFk3cGwKWFU4K1dmbmZjaXN4Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    certificate-authority-data: LS0tLS1...
     server: https://controlplane:4380
   name: kubernetes
 contexts:
@@ -168,11 +217,60 @@ users:
 - name: kubernetes-admin
   user:
     client-certificate-data: L...
-    client-key-data: LS....
+    client-key-data: LS...
 ```
 
 **Solution**
-Explanation of the most common error in this context:
+
+```bash
+kubectl get pods --kubeconfig /root/CKA/admin.kubeconfig
+```
+
+Notice the error message.
+
+Now look at the default kubeconfig for the correct setting.
+
+```bash
+cat ~/.kube/config
+```
+
+```yaml
+# ~/.kube/config
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJT...
+    server: https://controlplane:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: LS...
+```
+
+Make the correction
+
+The API server port (4380) isn't the standard port (**6443**)
+
+```bash
+nano /root/CKA/admin.kubeconfig
+```
+
+Test
+
+```bash
+kubectl get pods --kubeconfig /root/CKA/admin.kubeconfig
+```
+
+**Explanation of the most common error in this context:**
 
 In most cases, the error in a kubeconfig file is usually in one of these places:
 
@@ -194,6 +292,7 @@ Verify that the certificate data is complete and copied correctly (not truncated
 
 Make sure the username, context, and cluster names are consistent.
 
+
 4. Create a new deployment called **nginx-deploy**, with image **nginx:1.16** and 1 replica.
 Next, upgrade the deployment to version 1.17 using rolling update and add the annotation message
 Updated nginx image to 1.17.
@@ -205,31 +304,31 @@ Task: Upgrade the version of the deployment to 1:17
 
 **Solution**
 
-1. Create initial deployment
+4.1. Create initial deployment
 
 ```bash
 kubectl create deployment nginx-deploy --image=nginx:1.16 --replicas=1
 ```
 
-2. Verify deployment
+4.2. Verify deployment
 
 ```bash
 kubectl get deployments
 ```
 
-3. Update image to nginx:1.17 using rolling update
+4.3. Update image to nginx:1.17 using rolling update
 
 ```bash
 kubectl set image deployment/nginx-deploy nginx=nginx:1.17
 ```
 
-4. Add annotationn required
+4.4. Add annotationn required
 
 ```bash
 kubectl annotate deployment nginx-deploy message='Updated nginx image to 1.17'
 ```
 
-5. Verify that the update and annotation have been applied
+4.5. Verify that the update and annotation have been applied
 
 ```bash
 kubectl describe deployment nginx-deploy
@@ -237,58 +336,112 @@ kubectl describe deployment nginx-deploy
 
 5. A new deployment called **alpha-mysql** has been deployed in the **alpha** namespace. However, the pods are not running. Troubleshoot and fix the issue. The deployment should make use of the persistent volume **alpha-pv** to be mounted at ``` /var/lib/mysql ``` and should use the environment variable ``` MYSQL_ALLOW_EMPTY_PASSWORD=1 ``` to make use of an empty root password.
 
+**Solution**
 
 Important: Do not alter the persistent volume.
 
-1. Check the status of the deployment and pods:
+Inspect the deployment to check the environment variable is set. Here I'm using yq which is like jq but for YAML to not have to view the entire deployment YAML, just the section beneath containers in the deployment spec.
+
 
 ```bash
-kubectl -n alpha get deployment alpha-mysql
-kubectl -n alpha get pods
-kubectl -n alpha describe pod <alpha-mysql-85765c4c56-cv5mq >
+kubectl get deployment -n alpha alpha-mysql  -o yaml | yq e .spec.template.spec.containers -
 ```
 
-2. Look for error messages related to volumes, PVCs, or environment variables.
+**yq**: This is a tool for processing YAML files from the command line (similar to jq for JSON).
 
-Check if a **PersistentVolumeClaim** (PVC) exists and is linked to the PV alpha-pv:
+**e** .spec.template.spec.containers: Specifically extracts the .spec.template.spec.containers field from YAML.
 
-```bash
-kubectl -n alpha get pvc
-kubectl get pv
-```
-
-The PVC used by the deployment must be linked to the PV alpha-pv.
-
-If the deployment doesn't have a PVC or is misconfigured, edit it:
-
-```bash
-kubectl -n alpha edit deployment alpha-mysql
-```
-
-Make sure the volume section and volumeMount are like this (adjust the PVC name if necessary):
+**-**: Indicates that the input is coming from stdin (the output of the previous command).
 
 ```yaml
-spec:
-  containers:
-  - name: <nombre-del-contenedor>
-    ...
-    volumeMounts:
-    - name: mysql-storage
-      mountPath: /var/lib/mysql
-    env:
+- env:
     - name: MYSQL_ALLOW_EMPTY_PASSWORD
       value: "1"
-  volumes:
-  - name: mysql-storage
-    persistentVolumeClaim:
-      claimName: alpha-pvc
+  image: mysql:5.6
+  imagePullPolicy: Always
+  name: mysql
+  ports:
+    - containerPort: 3306
+      protocol: TCP
+  resources: {}
+  terminationMessagePath: /dev/termination-log
+  terminationMessagePolicy: File
+  volumeMounts:
+    - mountPath: /var/lib/mysql
+      name: mysql-data
+
 ```
 
-The claimName must match the PVC linked to the PV alpha-pv.
-If the PVC doesn't exist, create it as follows:
+Find out why the deployment does not have minimum availability. We'll have to find out the name of the deployment's pod first, then describe the pod to see the error.
+
+```bash
+kubectl get pods -n alpha
+kubectl describe pod -n alpha alpha-mysql-85765c4c56-7bdnr
+
+Volumes:
+  mysql-data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  mysql-alpha-pvc
+    ReadOnly:   false
+  kube-api-access-xq6kq:
+
+Events:
+  Type     Reason            Age                From               Message
+  ----     ------            ----               ----               -------
+  Warning  FailedScheduling  28m                default-scheduler  0/2 nodes are available: persistentvolumeclaim "mysql-alpha-pvc" not found. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling.
+  Warning  FailedScheduling  12m (x3 over 22m)  default-scheduler  0/2 nodes are available: persistentvolumeclaim "mysql-alpha-pvc" not found. preemption: 0/2 nodes are available: 2 Preemption is not helpful for scheduling.
+```
+
+```bash
+kubectl get pv alpha-pv
+```
+
+**Reference**
+
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/#create-a-persistentvolumeclaim
+
 
 ```yaml
-# pvc-file.yaml
+# mysql-alpha-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-alpha-pvc
+  namespace: alpha
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: slow
+```
+
+```bash
+ k apply -f mysql-alpha-pvc.yaml 
+```
+
+```yaml
+# alpha-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: alpha-pv
+  namespace: alpha
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data
+  persistentVolumeReclaimPolicy: Retain
+```
+Important: Do not alter the persistent volume.
+
+
+```yaml
+# alpha-claim.yaml 
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -303,29 +456,45 @@ spec:
   volumeName: alpha-pv
 ```
 
-Apply PVC:
+What could be the problem?
+The deployment is using a PVC with a different name than the one defined in **alpha-claim.yaml**.
+The PVC does not have the volumeName: alpha-pv field and is therefore not specifically bound to that PV.
+The PVC is in a namespace other than **alpha**.
+The **size** or accessModes do not match between the PV and PVC.
+The deployment does not mount the PVC correctly in /var/lib/mysql.
+The PV is already bound to another PVC or is in the Released/Failed state.
+
+Recommended solution:
+Make sure the PVC has:
+
+The same name as the one used in the deployment (claimName: alpha-pvc).
+The volumeName: alpha-pv field.
+The correct namespace (alpha).
+
+Check the status of the resources:
 
 ```bash
-kubectl apply -f <pvc-file>.yaml
+kubectl -n alpha get pvc
+kubectl get pv
 ```
 
-Restart the deployment if you made changes:
+5.1. Check the status of the deployment and pods:
 
 ```bash
-kubectl -n alpha rollout restart deployment alpha-mysql
-```
-
-Verify that the pod is running:
-
-```bash
+kubectl -n alpha get deployment alpha-mysql
 kubectl -n alpha get pods
+kubectl -n alpha describe pod alpha-mysql-85765c4c56-7bdnr >
 ```
 
-Explanation:
-The problem is usually that the deployment doesn't have the persistent volume or environment variable configured correctly.
-The deployment must mount the PVC (which is linked to the PV **alpha-pv**) in ``` /var/lib/mysql ```.
-The environment variable ``` MYSQL_ALLOW_EMPTY_PASSWORD=1 ``` is required for MySQL to start without a root password.
-You shouldn't modify the PV, just make sure the PVC uses it correctly.
+5.2. Look for error messages related to volumes, PVCs, or environment variables.
+
+Check if a **PersistentVolumeClaim** (PVC) exists and is linked to the PV alpha-pv:
+
+```bash
+kubectl -n alpha get pvc
+kubectl get pv
+```
+
 
 6. Take the backup of ETCD at the location ``` /opt/etcd-backup.db ``` on the controlplane node.
 
@@ -342,6 +511,27 @@ You can find them in the etcd manifest:
 cat /etc/kubernetes/manifests/etcd.yaml
 ```
 
+Take the backup of ETCD at the location /opt/etcd-backup.db on the controlplane node.
+This question is a bit poorly worded. It requires us to make a backup of etcd and store the backup at the given location.
+
+Know that the certificates we need for authentication of etcdctl are located in ``` /etc/kubernetes/pki/etcd ```
+
+```bash
+ETCDCTL_API='3' etcdctl snapshot save \
+  --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+  --cert=/etc/kubernetes/pki/etcd/server.crt \
+  --key=/etc/kubernetes/pki/etcd/server.key \
+  /opt/etcd-backup.db
+```
+
+Verify that the ``` /opt/etcd-backup.db ``` file was created correctly:
+
+```bash
+ls -lh /opt/etcd-backup.db
+```
+
+**Tips for the exam**
+
 Find the certificate paths and the endpoint address.
 
 Run the backup.
@@ -355,11 +545,7 @@ ETCDCTL_API=3 etcdctl snapshot save /opt/etcd-backup.db   --endpoints=htt
 --endpoints: etcd address (usually https://127.0.0.1:2379)
 --cacert, --cert, --key: Paths to certificates
 ```
-Verify that the ``` /opt/etcd-backup.db ``` file was created correctly:
 
-```bash
-ls -lh /opt/etcd-backup.db
-```
 
 7. Create a pod called **secret-1401** in the **admin1401** namespace using the busybox image. The container within the pod should be called **secret-admin** and should sleep for **4800** seconds.
 
@@ -367,33 +553,50 @@ The container should mount a read-only secret volume called secret-volume at the
 
 **Solution**
 
+Create a pod called secret-1401 in the admin1401 namespace using the busybox image....
+The container within the pod should be called secret-admin and should sleep for 4800 seconds.
+
+The container should mount a read-only secret volume called secret-volume at the path ``` /etc/secret-volume ```. The secret being mounted has already been created for you and is called **dotfile-secret**.
+
+Use imperative command to get a starter manifest
+
+```bash
+kubectl run secret-1401 -n admin1401 --image busybox --dry-run=client -o yaml --command -- sleep 4800 > admin.yaml
+```
+
 ```yaml
+# admin.yaml
 apiVersion: v1
 kind: Pod
 metadata:
+  creationTimestamp: null
+  labels:
+    run: secret-1401
   name: secret-1401
   namespace: admin1401
 spec:
-  containers:
-  - name: secret-admin
-    image: busybox
-    command: ["sleep", "4800"]
-    volumeMounts:
-    - name: secret-volume
-      mountPath: /etc/secret-volume
-      readOnly: true
   volumes:
   - name: secret-volume
     secret:
       secretName: dotfile-secret
+  containers:
+  - command:
+    - sleep
+    - "4800"
+    image: busybox
+    name: secret-admin
+    volumeMounts:
+    - name: secret-volume
+      readOnly: true
+      mountPath: /etc/secret-volume
 ```
 
 Steps to apply it:
-Save the above manifest to a file, for example: secret-1401.yaml.
+Save the above manifest to a file, for example: admin.yaml.
 Apply the manifest:
 
 ```bash
-kubectl apply -f secret-1401.yaml
+kubectl apply -f admin.yaml
 ```
 
 Explanation:
@@ -401,3 +604,4 @@ Explanation:
 The pod is created in the **admin1401** namespace.
 The container is named **secret-admin**, uses the **busybox** image, and runs sleep **4800**.
 The secret-volume volume mounts the secret **dotfile-secret** in ``` /etc/secret-volume ``` as read-only.
+
