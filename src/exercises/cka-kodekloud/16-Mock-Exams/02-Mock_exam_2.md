@@ -974,9 +974,111 @@ Expected Result:
 
 [The documentation of Helm Charts](https://helm.sh/docs/topics/charts/)
 
+Solution Steps
+Step 1: List all helm releases across all namespaces
+
+```sh
+helm list --all-namespaces
+```
+This will show all helm releases with their namespaces, release names, and chart information.
+
+Step 2: Search for releases that might contain the vulnerable image
+
+Method 1: Check helm release values
+
+```sh
+# For each release found in step 1, check the values
+helm get values <release-name> -n <namespace>
+```
+
+Look for any reference to kodekloud/webapp-color:v1 in the output.
+
+Method 2: Check helm release manifests
+
+```sh
+# Check the actual manifests deployed by each release
+helm get manifest <release-name> -n <namespace>
+```
+
+Search for the vulnerable image in the output.
+
+Step 3: Find pods using the vulnerable image
+
+```sh
+# Search for pods using the vulnerable image across all namespaces
+kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{.metadata.namespace}{"\t"}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}' | grep "kodekloud/webapp-color:v1"
+```
+
+Step 4: Identify which helm release deployed the vulnerable pod
+
+```sh
+# Check the labels on the vulnerable pod to identify the helm release
+kubectl get pod <pod-name> -n <namespace> -o yaml | grep -E "(helm|chart|release)"
+```
+
+Look for labels like:
+
+- app.kubernetes.io/managed-by: Helm
+- helm.sh/chart: <chart-name>
+- app.kubernetes.io/instance: <release-name>
+
+Step 5: Alternative method - Search by helm release annotations
+
+```sh
+# List all deployments and check for helm annotations
+kubectl get deployments --all-namespaces -o yaml | grep -B 10 -A 5 "kodekloud/webapp-color:v1"
+```
+
+Step 6: Once you identify the release name, uninstall it
+
+```sh
+helm uninstall <release-name> -n <namespace>
+```
+
+Step 7: Verify the release has been uninstalled
+
+```sh
+helm list --all-namespaces
+kubectl get pods --all-namespaces | grep "kodekloud/webapp-color:v1"
+```
+
+Complete Example Workflow
+
+```sh
+# Step 1: List all helm releases
+helm list --all-namespaces
+
+# Example output:
+# NAME        NAMESPACE   REVISION  UPDATED                   STATUS    CHART           APP VERSION
+# webapp-v1   frontend    1         2024-01-01 10:00:00 UTC   deployed  webapp-0.1.0    v1
+# backend-app backend     1         2024-01-01 10:05:00 UTC   deployed  backend-0.2.0   v2
+
+# Step 2: Check each release for the vulnerable image
+helm get values webapp-v1 -n frontend
+helm get manifest webapp-v1 -n frontend | grep "kodekloud/webapp-color:v1"
+
+# If found, uninstall the release
+helm uninstall webapp-v1 -n frontend
+```
+
+Key Points:
+-Helm releases are namespace-scoped: Always specify the correct namespace when checking or uninstalling
+-Check both values and manifests: The vulnerable image might be specified in values.yaml or directly in templates
+-Pod labels identify helm releases: Look for helm-specific labels and annotations
+-Verify uninstallation: Always confirm the release and pods are completely removed
+
+Expected Result:
+-The helm release containing the kodekloud/webapp-color:v1 image will be identified and uninstalled
+-All resources deployed by that helm release will be removed from the cluster
+-No pods should remain running with the vulnerable image
+
+Note: Make sure to only uninstall the release with the vulnerable image, not all releases. Double-check the release name and namespace before uninstalling.
+
 11. You are requested to create a NetworkPolicy to allow traffic from frontend apps located in the **frontend namespace**, to backend apps located in the **backend namespace**, but not from the databases in the **databases namespace**. There are three policies available in the /root folder. Apply the most restrictive policy from the provided YAML files to achieve the desired result. Do not delete any existing policies.
 
 [The documentation of NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/) 
+
+
 
 
 
