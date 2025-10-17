@@ -9,6 +9,98 @@ Whatever we believe about ourselves and our ability comes true for us.
 - net.ipv4.ip_forward = 1
 - net.bridge.bridge-nf-call-iptables = 1
 
+Solution Steps
+Step 1: Check current network parameter values
+
+```sh
+sysctl net.ipv4.ip_forward
+sysctl net.bridge.bridge-nf-call-iptables
+```
+
+Step 2: Set the network parameters temporarily (immediate effect)
+
+```sh
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+```
+
+Step 3: Make the changes persistent across reboots
+
+Method 1: Create a new sysctl configuration file
+
+```sh
+sudo tee /etc/sysctl.d/k8s.conf <<EOF
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+```
+
+Method 2: Add to the main sysctl configuration file
+
+```sh
+echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+echo "net.bridge.bridge-nf-call-iptables = 1" | sudo tee -a /etc/sysctl.conf
+```
+
+Step 4: Apply the configuration
+
+```sh
+sudo sysctl --system
+```
+
+Step 5: Verify the changes are applied
+
+```sh
+sysctl net.ipv4.ip_forward
+sysctl net.bridge.bridge-nf-call-iptables
+```
+
+Expected output
+
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+
+Step 6: Test persistence by reloading sysctl configuration
+
+```sh
+sudo sysctl -p /etc/sysctl.d/k8s.conf
+```
+
+Alternative Method using modprobe (if bridge module is not loaded)
+
+If you get an error about the bridge module not being available:
+
+```sh
+# Load the bridge module
+sudo modprobe br_netfilter
+
+# Make it persistent
+echo 'br_netfilter' | sudo tee /etc/modules-load.d/k8s.conf
+
+# Then apply the sysctl settings
+sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+```
+
+Key Points:
+- net.ipv4.ip_forward = 1: Enables IP forwarding, which is required for pod-to-pod communication across nodes
+- net.bridge.bridge-nf-call-iptables = 1: Ensures that bridged traffic is processed by iptables rules, necessary for proper network policies and service routing
+- Persistence: Using /etc/sysctl.d/k8s.conf is the recommended approach for Kubernetes-specific settings
+- Module dependency: The br_netfilter kernel module must be loaded for bridge-related sysctl parameters to work
+Verification Commands:
+
+```sh
+# Check if settings are applied
+cat /proc/sys/net/ipv4/ip_forwardcat /proc/sys/net/bridge/bridge-nf-call-iptables 
+```
+
+```sh
+# Check if configuration file exists
+cat /etc/sysctl.d/k8s.conf
+
+# Verify after reboot (optional)sudo reboot# After reboot, check again:sysctl net.ipv4.ip_forward net.bridge.
+bridge-nf-call-iptables
+```
+
 2. Create a new service account with the name **pvviewer**. Grant this Service account access to list all PersistentVolumes in the cluster by creating an appropriate cluster role called **pvviewer-role** and ClusterRoleBinding called **pvviewer-role-binding**.
 Next, create a pod called **pvviewer** with the image: **redis** and serviceAccount: pvviewer in the default namespace.
 
