@@ -9,8 +9,280 @@ Whatever we believe about ourselves and our ability comes true for us.
 - net.ipv4.ip_forward = 1
 - net.bridge.bridge-nf-call-iptables = 1
 
+Solution Steps
+Step 1: Check current network parameter values
+
+```sh
+sysctl net.ipv4.ip_forward
+sysctl net.bridge.bridge-nf-call-iptables
+```
+
+Step 2: Set the network parameters temporarily (immediate effect)
+
+```sh
+sudo sysctl -w net.ipv4.ip_forward=1
+sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+```
+
+Step 3: Make the changes persistent across reboots
+
+Method 1: Create a new sysctl configuration file
+
+```sh
+sudo tee /etc/sysctl.d/k8s.conf <<EOF
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+```
+
+Method 2: Add to the main sysctl configuration file
+
+```sh
+echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+echo "net.bridge.bridge-nf-call-iptables = 1" | sudo tee -a /etc/sysctl.conf
+```
+
+Step 4: Apply the configuration
+
+```sh
+sudo sysctl --system
+```
+
+Step 5: Verify the changes are applied
+
+```sh
+sysctl net.ipv4.ip_forward
+sysctl net.bridge.bridge-nf-call-iptables
+```
+
+Expected output
+
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-iptables = 1
+
+Step 6: Test persistence by reloading sysctl configuration
+
+```sh
+sudo sysctl -p /etc/sysctl.d/k8s.conf
+```
+
+Alternative Method using modprobe (if bridge module is not loaded)
+
+If you get an error about the bridge module not being available:
+
+```sh
+# Load the bridge module
+sudo modprobe br_netfilter
+
+# Make it persistent
+echo 'br_netfilter' | sudo tee /etc/modules-load.d/k8s.conf
+
+# Then apply the sysctl settings
+sudo sysctl -w net.bridge.bridge-nf-call-iptables=1
+```
+
+Key Points:
+- net.ipv4.ip_forward = 1: Enables IP forwarding, which is required for pod-to-pod communication across nodes
+- net.bridge.bridge-nf-call-iptables = 1: Ensures that bridged traffic is processed by iptables rules, necessary for proper network policies and service routing
+- Persistence: Using /etc/sysctl.d/k8s.conf is the recommended approach for Kubernetes-specific settings
+- Module dependency: The br_netfilter kernel module must be loaded for bridge-related sysctl parameters to work
+Verification Commands:
+
+```sh
+# Check if settings are applied
+cat /proc/sys/net/ipv4/ip_forwardcat /proc/sys/net/bridge/bridge-nf-call-iptables 
+```
+
+```sh
+# Check if configuration file exists
+cat /etc/sysctl.d/k8s.conf
+
+# Verify after reboot (optional)sudo reboot# After reboot, check again:sysctl net.ipv4.ip_forward net.bridge.
+bridge-nf-call-iptables
+```
+
 2. Create a new service account with the name **pvviewer**. Grant this Service account access to list all PersistentVolumes in the cluster by creating an appropriate cluster role called **pvviewer-role** and ClusterRoleBinding called **pvviewer-role-binding**.
 Next, create a pod called **pvviewer** with the image: **redis** and serviceAccount: pvviewer in the default namespace.
+
+Solution Steps
+Step 1: Create the ServiceAccount
+
+Imperative Method:
+
+```sh
+kubectl create serviceaccount pvviewer
+```
+
+Declarative Method:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pvviewer
+  namespace: default
+```
+
+Step 2: Create the ClusterRole with PV list permissions
+
+Create a YAML file:
+
+```yaml
+# pvviewer-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pvviewer-role
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["list"]
+```
+
+Imperative Method:
+
+```sh
+kubectl create clusterrole pvviewer-role --verb=list --resource=persistentvolumes
+```
+
+Step 3: Create the ClusterRoleBinding
+
+
+Create a YAML file:
+
+```yaml
+# pvviewer-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pvviewer-role-binding
+subjects:
+- kind: ServiceAccount
+  name: pvviewer
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: pvviewer-role
+  apiGroup: rbac.authorization.k8s.io
+```
+
+Imperative Method:
+
+```sh
+kubectl create clusterrolebinding pvviewer-role-binding --clusterrole=pvviewer-role --serviceaccount=default:pvviewer
+```
+
+Step 4: Create the Pod with the ServiceAccount
+
+Create a YAML file:
+
+```yaml
+# pvviewer-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvviewer
+  namespace: default
+spec:
+  serviceAccountName: pvviewer
+  containers:
+  - name: pvviewer
+    image: redis
+```
+
+Imperative Method:
+
+```sh
+kubectl run pvviewer --image=redis --serviceaccount=pvviewer
+```
+
+Step 5: Apply all the manifests (if using declarative method)
+
+```sh
+kubectl apply -f pvviewer-role.yaml
+kubectl apply -f pvviewer-role-binding.yaml
+kubectl apply -f pvviewer-pod.yaml
+```
+
+Step 6: Verification
+
+Check ServiceAccount:
+
+```sh
+kubectl get serviceaccount pvviewer
+```
+
+Check ClusterRole:
+
+```sh
+kubectl get clusterrole pvviewer-role
+kubectl describe clusterrole pvviewer-role
+```
+
+Check ClusterRoleBinding:
+
+```sh
+kubectl get clusterrolebinding pvviewer-role-binding
+kubectl describe clusterrolebinding pvviewer-role-binding
+```
+
+Check Pod:
+
+```sh
+kubectl get pod pvviewer
+kubectl describe pod pvviewer
+```
+
+Step 7: Test the permissions
+
+Verify that the ServiceAccount can list PersistentVolumes:
+
+```sh
+kubectl auth can-i list persistentvolumes --as=system:serviceaccount:default:pvviewer
+```
+
+Expected output: yes
+
+Test from within the pod:
+
+```sh
+kubectl exec -it pvviewer -- redis-cli ping
+# Verify pod is running properly
+```
+
+Complete Example using Imperative Commands:
+
+```sh
+# Step 1: Create ServiceAccount
+kubectl create serviceaccount pvviewer
+
+# Step 2: Create ClusterRole
+kubectl create clusterrole pvviewer-role --verb=list --resource=persistentvolumes
+
+# Step 3: Create ClusterRoleBinding
+kubectl create clusterrolebinding pvviewer-role-binding --clusterrole=pvviewer-role --serviceaccount=default:pvviewer
+
+# Step 4: Create Pod
+kubectl run pvviewer --image=redis --serviceaccount=pvviewer
+
+# Step 5: Verify everything
+kubectl get serviceaccount pvviewer
+kubectl get clusterrole pvviewer-role
+kubectl get clusterrolebinding pvviewer-role-binding
+kubectl get pod pvviewer
+```
+
+Key Points:
+- ClusterRole vs Role: Use ClusterRole because PersistentVolumes are cluster-scoped resources, not namespace-scoped
+- ClusterRoleBinding: Required to bind the ClusterRole to the ServiceAccount across the entire cluster
+- ServiceAccount specification: Must be set in the pod spec to use the custom ServiceAccount instead of the default one
+- Permissions: The ServiceAccount gets only list permission on PersistentVolumes, following the principle of least privilege
+
+Expected Result:
+- ServiceAccount pvviewer can list all PersistentVolumes in the cluster
+- Pod pvviewer runs with the custom ServiceAccount
+- The pod has access to list PersistentVolumes through the ServiceAccount's permissions
+- Redis container runs successfully within the pod
 
 3. Create a StorageClass named **rancher-sc** with the following specifications:
 

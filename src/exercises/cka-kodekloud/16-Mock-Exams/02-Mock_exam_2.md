@@ -1079,6 +1079,91 @@ Note: Make sure to only uninstall the release with the vulnerable image, not all
 [The documentation of NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/) 
 
 
+Solution Steps
+Step 1: Examine the available NetworkPolicy files
+
+```sh
+ls /root/*.yaml
+# Look for policy files like policy1.yaml, policy2.yaml, policy3.yaml
+```
+
+Step 2: Review each policy to determine which is most restrictive
+
+```sh
+cat /root/policy1.yaml
+cat /root/policy2.yaml  
+cat /root/policy3.yaml
+```
+
+Step 3: A proper restrictive NetworkPolicy would look like this:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-access-policy
+  namespace: backend
+spec:
+  podSelector: {}  # Applies to all pods in backend namespace
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: frontend  # Only allow from frontend namespace
+```
+
+Step 4: Apply the most restrictive policy
+
+```sh
+kubectl apply -f /root/policy-restrictive.yaml
+```
+
+
+Step 5: Verify the policy is applied
+
+```sh
+kubectl get networkpolicy -n backend
+kubectl describe networkpolicy backend-access-policy -n backend
+```
+
+Key Concepts Explained
+-NetworkPolicy Scope: Applied to the backend namespace since that's what we want to protect
+
+  -podSelector: {}: Empty selector means this policy applies to ALL pods in the backend namespace
+
+  -policyTypes: [Ingress]: We're controlling incoming traffic only
+
+  -ingress rules: Only allows traffic from pods in namespaces with label name: frontend
+
+-Default Deny: By creating a NetworkPolicy, all other traffic is implicitly denied
+
+What Makes It "Most Restrictive"
+-Explicit Allow: Only frontend namespace is explicitly allowed
+-Default Deny: Everything else is blocked (including databases namespace)
+-Namespace-level Control: Uses namespaceSelector for broad traffic control
+-No Egress Rules: Doesn't unnecessarily open outbound traffic
+
+Testing the Policy
+
+```sh
+# Test allowed traffic (should work)
+kubectl run test-frontend -n frontend --image=busybox --rm -it -- wget -qO- backend-service.backend:80
+
+# Test blocked traffic (should fail)
+kubectl run test-database -n databases --image=busybox --rm -it -- wget -qO- backend-service.backend:80
+```
+
+Important Notes
+-NetworkPolicies require a CNI that supports them (like Calico, Weave, etc.)
+-Namespaces need proper labels for namespaceSelector to work
+-The policy creates a "default deny" behavior for the backend namespace
+-Always test policies in a non-production environment first
+
+This solution provides microsegmentation at the network level, ensuring that only authorized frontend applications can communicate with backend services, while blocking potentially harmful database-to-backend connections.
+
+
 
 
 
