@@ -104,6 +104,186 @@ bridge-nf-call-iptables
 2. Create a new service account with the name **pvviewer**. Grant this Service account access to list all PersistentVolumes in the cluster by creating an appropriate cluster role called **pvviewer-role** and ClusterRoleBinding called **pvviewer-role-binding**.
 Next, create a pod called **pvviewer** with the image: **redis** and serviceAccount: pvviewer in the default namespace.
 
+Solution Steps
+Step 1: Create the ServiceAccount
+
+Imperative Method:
+
+```sh
+kubectl create serviceaccount pvviewer
+```
+
+Declarative Method:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pvviewer
+  namespace: default
+```
+
+Step 2: Create the ClusterRole with PV list permissions
+
+Create a YAML file:
+
+```yaml
+# pvviewer-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pvviewer-role
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumes"]
+  verbs: ["list"]
+```
+
+Imperative Method:
+
+```sh
+kubectl create clusterrole pvviewer-role --verb=list --resource=persistentvolumes
+```
+
+Step 3: Create the ClusterRoleBinding
+
+
+Create a YAML file:
+
+```yaml
+# pvviewer-role-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pvviewer-role-binding
+subjects:
+- kind: ServiceAccount
+  name: pvviewer
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: pvviewer-role
+  apiGroup: rbac.authorization.k8s.io
+```
+
+Imperative Method:
+
+```sh
+kubectl create clusterrolebinding pvviewer-role-binding --clusterrole=pvviewer-role --serviceaccount=default:pvviewer
+```
+
+Step 4: Create the Pod with the ServiceAccount
+
+Create a YAML file:
+
+```yaml
+# pvviewer-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvviewer
+  namespace: default
+spec:
+  serviceAccountName: pvviewer
+  containers:
+  - name: pvviewer
+    image: redis
+```
+
+Imperative Method:
+
+```sh
+kubectl run pvviewer --image=redis --serviceaccount=pvviewer
+```
+
+Step 5: Apply all the manifests (if using declarative method)
+
+```sh
+kubectl apply -f pvviewer-role.yaml
+kubectl apply -f pvviewer-role-binding.yaml
+kubectl apply -f pvviewer-pod.yaml
+```
+
+Step 6: Verification
+
+Check ServiceAccount:
+
+```sh
+kubectl get serviceaccount pvviewer
+```
+
+Check ClusterRole:
+
+```sh
+kubectl get clusterrole pvviewer-role
+kubectl describe clusterrole pvviewer-role
+```
+
+Check ClusterRoleBinding:
+
+```sh
+kubectl get clusterrolebinding pvviewer-role-binding
+kubectl describe clusterrolebinding pvviewer-role-binding
+```
+
+Check Pod:
+
+```sh
+kubectl get pod pvviewer
+kubectl describe pod pvviewer
+```
+
+Step 7: Test the permissions
+
+Verify that the ServiceAccount can list PersistentVolumes:
+
+```sh
+kubectl auth can-i list persistentvolumes --as=system:serviceaccount:default:pvviewer
+```
+
+Expected output: yes
+
+Test from within the pod:
+
+```sh
+kubectl exec -it pvviewer -- redis-cli ping
+# Verify pod is running properly
+```
+
+Complete Example using Imperative Commands:
+
+```sh
+# Step 1: Create ServiceAccount
+kubectl create serviceaccount pvviewer
+
+# Step 2: Create ClusterRole
+kubectl create clusterrole pvviewer-role --verb=list --resource=persistentvolumes
+
+# Step 3: Create ClusterRoleBinding
+kubectl create clusterrolebinding pvviewer-role-binding --clusterrole=pvviewer-role --serviceaccount=default:pvviewer
+
+# Step 4: Create Pod
+kubectl run pvviewer --image=redis --serviceaccount=pvviewer
+
+# Step 5: Verify everything
+kubectl get serviceaccount pvviewer
+kubectl get clusterrole pvviewer-role
+kubectl get clusterrolebinding pvviewer-role-binding
+kubectl get pod pvviewer
+```
+
+Key Points:
+- ClusterRole vs Role: Use ClusterRole because PersistentVolumes are cluster-scoped resources, not namespace-scoped
+- ClusterRoleBinding: Required to bind the ClusterRole to the ServiceAccount across the entire cluster
+- ServiceAccount specification: Must be set in the pod spec to use the custom ServiceAccount instead of the default one
+- Permissions: The ServiceAccount gets only list permission on PersistentVolumes, following the principle of least privilege
+
+Expected Result:
+- ServiceAccount pvviewer can list all PersistentVolumes in the cluster
+- Pod pvviewer runs with the custom ServiceAccount
+- The pod has access to list PersistentVolumes through the ServiceAccount's permissions
+- Redis container runs successfully within the pod
+
 3. Create a StorageClass named **rancher-sc** with the following specifications:
 
 - The provisioner should be **rancher.io/local-path**.
