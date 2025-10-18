@@ -290,6 +290,96 @@ Expected Result:
 - The volume binding mode should be **WaitForFirstConsumer**.
 - Volume expansion should be **enabled**.
 
+Solution Steps
+Step 1: Create the StorageClass YAML manifest
+
+Create a YAML file:
+
+```yaml
+# rancher-sc.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rancher-sc
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+Step 2: Apply the StorageClass manifest
+
+```sh
+kubectl apply -f rancher-sc.yaml
+```
+
+Step 3: Verify the StorageClass was created successfully
+
+```sh
+kubectl get storageclass rancher-sc
+kubectl describe storageclass rancher-sc
+```
+
+Step 4: Check all StorageClasses in the cluster
+
+```sh
+kubectl get storageclass
+```
+
+Alternative: Using kubectl command line (imperative approach)
+Unfortunately, there's no direct imperative command to create a StorageClass with all these specifications. You must use the YAML manifest approach.
+
+Verification Commands
+Check StorageClass details:
+
+```sh
+kubectl get sc rancher-sc -o yaml
+```
+
+Expected output should show:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rancher-sc
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+Check if the StorageClass appears in the list:
+
+```sh
+kubectl get storageclass
+```
+
+Expected output format:
+
+```sh
+NAME         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGErancher-sc   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   1m
+```
+
+Key Points:
+- Provisioner: rancher.io/local-path is commonly used with Rancher's local-path-provisioner for local storage
+- Volume Binding Mode: WaitForFirstConsumer delays volume binding until a pod using the PVC is created
+- Volume Expansion: allowVolumeExpansion: true allows resizing of volumes after creation
+- No default: This StorageClass is not set as the default (no annotation for default class)
+
+What each parameter does:
+1. provisioner: rancher.io/local-path
+  -Specifies which storage provisioner will handle volume creation
+  -Rancher local-path provisioner creates local volumes on nodes
+
+2. volumeBindingMode: WaitForFirstConsumer
+  -Delays volume binding until a pod is scheduled
+  -Ensures the volume is created on the same node where the pod will run
+3. allowVolumeExpansion: true
+  -Enables volume expansion after creation
+  -Allows increasing the size of existing volumes
+
+Expected Result:
+The StorageClass rancher-sc will be available for use by PersistentVolumeClaims that want to use Rancher's local-path provisioner with delayed binding and expandable volumes.
+
 4. Create a ConfigMap named **app-config** in the namespace **cm-namespace** with the following key-value pairs:
 
 - ENV=production
@@ -297,7 +387,225 @@ Expected Result:
 
 Then, modify the existing Deployment named **cm-webapp** in the same namespace to use the **app-config** ConfigMap by setting the environment variables **ENV** and **LOG_LEVEL** in the container from the ConfigMap.
 
+Solution Steps
+Step 1: Create the namespace (if it doesn't exist)
+
+```sh
+kubectl create namespace cm-namespace
+```
+
+Step 2: Create the ConfigMap
+
+Imperative Method:
+
+```sh
+kubectl create configmap app-config --from-literal=ENV=production --from-literal=LOG_LEVEL=info -n cm-namespace
+```
+
+Declarative Method: Create a YAML file app-config.yaml:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: cm-namespace
+data:
+  ENV: production
+  LOG_LEVEL: info
+```
+
+Apply the ConfigMap:
+
+```yaml
+kubectl apply -f app-config.yaml
+```
+
+Step 3: Verify the ConfigMap was created
+
+```sh
+kubectl get configmap app-config -n cm-namespace
+kubectl describe configmap app-config -n cm-namespace
+```
+
+Step 4: Check the existing deployment
+
+```sh
+kubectl get deployment cm-webapp -n cm-namespace
+kubectl describe deployment cm-webapp -n cm-namespace
+```
+
+Step 5: Modify the deployment to use the ConfigMap
+
+Method 1: Using kubectl edit (imperative)
+
+```sh
+kubectl edit deployment cm-webapp -n cm-namespace
+```
+
+Add the environment variables section to the container spec:
+
+```yaml
+spec:
+  containers:
+  - name: <container-name>
+    image: <image-name>
+    env:
+    - name: ENV
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: ENV
+    - name: LOG_LEVEL
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: LOG_LEVEL
+```
+
+
+Method 2: Using kubectl patch (imperative)
+
+```sh
+kubectl patch deployment cm-webapp -n cm-namespace -p '
+{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "webapp",
+            "env": [
+              {
+                "name": "ENV",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "name": "app-config",
+                    "key": "ENV"
+                  }
+                }
+              },
+              {
+                "name": "LOG_LEVEL",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "name": "app-config",
+                    "key": "LOG_LEVEL"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+'
+```
+
+Method 3: Export, modify, and apply (declarative)
+
+```sh
+# Export current deployment
+kubectl get deployment cm-webapp -n cm-namespace -o yaml > cm-webapp.yaml
+
+# Edit the file to add the env section
+# Then apply the changes
+kubectl apply -f cm-webapp.yaml
+```
+
+Step 6: Verify the deployment was updated
+
+```sh
+kubectl get deployment cm-webapp -n cm-namespace
+kubectl describe deployment cm-webapp -n cm-namespace
+```
+
+Step 7: Check if the rollout completed successfully
+
+```sh
+kubectl rollout status deployment/cm-webapp -n cm-namespace
+```
+
+Step 8: Verify the environment variables are set in the pods
+
+```sh
+# Get the pod name
+kubectl get pods -n cm-namespace -l app=cm-webapp
+
+# Check environment variables in the pod
+kubectl exec -it <pod-name> -n cm-namespace -- env | grep -E "ENV|LOG_LEVEL"
+```
+
+Step 9: Verify ConfigMap is being used
+
+```sh
+kubectl describe pod <pod-name> -n cm-namespace
+```
+
+Look for the ConfigMap reference in the environment variables section.
+
+Complete Example with Imperative Commands:
+
+```sh
+# Step 1: Create namespace
+kubectl create namespace cm-namespace
+
+# Step 2: Create ConfigMap
+kubectl create configmap app-config --from-literal=ENV=production --from-literal=LOG_LEVEL=info -n cm-namespace
+
+# Step 3: Modify deployment (get container name first)
+kubectl get deployment cm-webapp -n cm-namespace -o jsonpath='{.spec.template.spec.containers[0].name}'
+
+# Step 4: Patch the deployment
+kubectl patch deployment cm-webapp -n cm-namespace --type='json' -p='[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/env",
+    "value": [
+      {
+        "name": "ENV",
+        "valueFrom": {
+          "configMapKeyRef": {
+            "name": "app-config",
+            "key": "ENV"
+          }
+        }
+      },
+      {
+        "name": "LOG_LEVEL",
+        "valueFrom": {
+          "configMapKeyRef": {
+            "name": "app-config",
+            "key": "LOG_LEVEL"
+          }
+        }
+      }
+    ]
+  }
+]'
+
+# Step 5: Verify the changes
+kubectl rollout status deployment/cm-webapp -n cm-namespace
+kubectl get pods -n cm-namespace
+```
+
+Key Points:
+- ConfigMap creation: Use --from-literal for key-value pairs
+- Environment variables: Reference ConfigMap keys using configMapKeyRef
+- Deployment update: Changes to env vars trigger a rolling update
+- Verification: Always check that pods are restarted and env vars are set correctly
+
+Expected Result:
+- ConfigMap app-config is created with the specified key-value pairs
+- Deployment cm-webapp is updated to use environment variables from the ConfigMap
+- New pods are created with ENV=production and LOG_LEVEL=info environment variables
+- The rolling update completes successfully without downtime
+
 5. Create a PriorityClass named **low-priority** with a value of **50000**. A pod named **lp-pod** exists in the namespace **low-priority**. Modify the pod to use the priority class you created. Recreate the pod if necessary.
+
+
 
 6. We have deployed a new pod called **np-test-1** and a service called **np-test-service**. Incoming connections to this service are not working. Troubleshoot and fix it.
 Create NetworkPolicy, by the name **ingress-to-nptest** that allows incoming connections to the service over port **80**.
