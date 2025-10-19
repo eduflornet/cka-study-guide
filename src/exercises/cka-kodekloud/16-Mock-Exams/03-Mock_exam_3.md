@@ -290,6 +290,96 @@ Expected Result:
 - The volume binding mode should be **WaitForFirstConsumer**.
 - Volume expansion should be **enabled**.
 
+Solution Steps
+Step 1: Create the StorageClass YAML manifest
+
+Create a YAML file:
+
+```yaml
+# rancher-sc.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rancher-sc
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+Step 2: Apply the StorageClass manifest
+
+```sh
+kubectl apply -f rancher-sc.yaml
+```
+
+Step 3: Verify the StorageClass was created successfully
+
+```sh
+kubectl get storageclass rancher-sc
+kubectl describe storageclass rancher-sc
+```
+
+Step 4: Check all StorageClasses in the cluster
+
+```sh
+kubectl get storageclass
+```
+
+Alternative: Using kubectl command line (imperative approach)
+Unfortunately, there's no direct imperative command to create a StorageClass with all these specifications. You must use the YAML manifest approach.
+
+Verification Commands
+Check StorageClass details:
+
+```sh
+kubectl get sc rancher-sc -o yaml
+```
+
+Expected output should show:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rancher-sc
+provisioner: rancher.io/local-path
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+```
+
+Check if the StorageClass appears in the list:
+
+```sh
+kubectl get storageclass
+```
+
+Expected output format:
+
+```sh
+NAME         PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGErancher-sc   rancher.io/local-path   Delete          WaitForFirstConsumer   true                   1m
+```
+
+Key Points:
+- Provisioner: rancher.io/local-path is commonly used with Rancher's local-path-provisioner for local storage
+- Volume Binding Mode: WaitForFirstConsumer delays volume binding until a pod using the PVC is created
+- Volume Expansion: allowVolumeExpansion: true allows resizing of volumes after creation
+- No default: This StorageClass is not set as the default (no annotation for default class)
+
+What each parameter does:
+1. provisioner: rancher.io/local-path
+  -Specifies which storage provisioner will handle volume creation
+  -Rancher local-path provisioner creates local volumes on nodes
+
+2. volumeBindingMode: WaitForFirstConsumer
+  -Delays volume binding until a pod is scheduled
+  -Ensures the volume is created on the same node where the pod will run
+3. allowVolumeExpansion: true
+  -Enables volume expansion after creation
+  -Allows increasing the size of existing volumes
+
+Expected Result:
+The StorageClass rancher-sc will be available for use by PersistentVolumeClaims that want to use Rancher's local-path provisioner with delayed binding and expandable volumes.
+
 4. Create a ConfigMap named **app-config** in the namespace **cm-namespace** with the following key-value pairs:
 
 - ENV=production
@@ -297,12 +387,567 @@ Expected Result:
 
 Then, modify the existing Deployment named **cm-webapp** in the same namespace to use the **app-config** ConfigMap by setting the environment variables **ENV** and **LOG_LEVEL** in the container from the ConfigMap.
 
+Solution Steps
+Step 1: Create the namespace (if it doesn't exist)
+
+```sh
+kubectl create namespace cm-namespace
+```
+
+Step 2: Create the ConfigMap
+
+Imperative Method:
+
+```sh
+kubectl create configmap app-config --from-literal=ENV=production --from-literal=LOG_LEVEL=info -n cm-namespace
+```
+
+Declarative Method: Create a YAML file app-config.yaml:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: cm-namespace
+data:
+  ENV: production
+  LOG_LEVEL: info
+```
+
+Apply the ConfigMap:
+
+```yaml
+kubectl apply -f app-config.yaml
+```
+
+Step 3: Verify the ConfigMap was created
+
+```sh
+kubectl get configmap app-config -n cm-namespace
+kubectl describe configmap app-config -n cm-namespace
+```
+
+Step 4: Check the existing deployment
+
+```sh
+kubectl get deployment cm-webapp -n cm-namespace
+kubectl describe deployment cm-webapp -n cm-namespace
+```
+
+Step 5: Modify the deployment to use the ConfigMap
+
+Method 1: Using kubectl edit (imperative)
+
+```sh
+kubectl edit deployment cm-webapp -n cm-namespace
+```
+
+Add the environment variables section to the container spec:
+
+```yaml
+spec:
+  containers:
+  - name: <container-name>
+    image: <image-name>
+    env:
+    - name: ENV
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: ENV
+    - name: LOG_LEVEL
+      valueFrom:
+        configMapKeyRef:
+          name: app-config
+          key: LOG_LEVEL
+```
+
+
+Method 2: Using kubectl patch (imperative)
+
+```sh
+kubectl patch deployment cm-webapp -n cm-namespace -p '
+{
+  "spec": {
+    "template": {
+      "spec": {
+        "containers": [
+          {
+            "name": "webapp",
+            "env": [
+              {
+                "name": "ENV",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "name": "app-config",
+                    "key": "ENV"
+                  }
+                }
+              },
+              {
+                "name": "LOG_LEVEL",
+                "valueFrom": {
+                  "configMapKeyRef": {
+                    "name": "app-config",
+                    "key": "LOG_LEVEL"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
+'
+```
+
+Method 3: Export, modify, and apply (declarative)
+
+```sh
+# Export current deployment
+kubectl get deployment cm-webapp -n cm-namespace -o yaml > cm-webapp.yaml
+
+# Edit the file to add the env section
+# Then apply the changes
+kubectl apply -f cm-webapp.yaml
+```
+
+Step 6: Verify the deployment was updated
+
+```sh
+kubectl get deployment cm-webapp -n cm-namespace
+kubectl describe deployment cm-webapp -n cm-namespace
+```
+
+Step 7: Check if the rollout completed successfully
+
+```sh
+kubectl rollout status deployment/cm-webapp -n cm-namespace
+```
+
+Step 8: Verify the environment variables are set in the pods
+
+```sh
+# Get the pod name
+kubectl get pods -n cm-namespace -l app=cm-webapp
+
+# Check environment variables in the pod
+kubectl exec -it <pod-name> -n cm-namespace -- env | grep -E "ENV|LOG_LEVEL"
+```
+
+Step 9: Verify ConfigMap is being used
+
+```sh
+kubectl describe pod <pod-name> -n cm-namespace
+```
+
+Look for the ConfigMap reference in the environment variables section.
+
+Complete Example with Imperative Commands:
+
+```sh
+# Step 1: Create namespace
+kubectl create namespace cm-namespace
+
+# Step 2: Create ConfigMap
+kubectl create configmap app-config --from-literal=ENV=production --from-literal=LOG_LEVEL=info -n cm-namespace
+
+# Step 3: Modify deployment (get container name first)
+kubectl get deployment cm-webapp -n cm-namespace -o jsonpath='{.spec.template.spec.containers[0].name}'
+
+# Step 4: Patch the deployment
+kubectl patch deployment cm-webapp -n cm-namespace --type='json' -p='[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/env",
+    "value": [
+      {
+        "name": "ENV",
+        "valueFrom": {
+          "configMapKeyRef": {
+            "name": "app-config",
+            "key": "ENV"
+          }
+        }
+      },
+      {
+        "name": "LOG_LEVEL",
+        "valueFrom": {
+          "configMapKeyRef": {
+            "name": "app-config",
+            "key": "LOG_LEVEL"
+          }
+        }
+      }
+    ]
+  }
+]'
+
+# Step 5: Verify the changes
+kubectl rollout status deployment/cm-webapp -n cm-namespace
+kubectl get pods -n cm-namespace
+```
+
+Key Points:
+- ConfigMap creation: Use --from-literal for key-value pairs
+- Environment variables: Reference ConfigMap keys using configMapKeyRef
+- Deployment update: Changes to env vars trigger a rolling update
+- Verification: Always check that pods are restarted and env vars are set correctly
+
+Expected Result:
+- ConfigMap app-config is created with the specified key-value pairs
+- Deployment cm-webapp is updated to use environment variables from the ConfigMap
+- New pods are created with ENV=production and LOG_LEVEL=info environment variables
+- The rolling update completes successfully without downtime
+
 5. Create a PriorityClass named **low-priority** with a value of **50000**. A pod named **lp-pod** exists in the namespace **low-priority**. Modify the pod to use the priority class you created. Recreate the pod if necessary.
+
+Solution Steps
+Step 1: Create the PriorityClass
+
+Create a YAML file :
+
+```yaml
+# low-priority.yaml
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 50000
+globalDefault: false
+description: "Low priority class for less critical workloads"
+```
+
+Apply the PriorityClass:
+
+```sh
+kubectl apply -f low-priority.yaml
+```
+
+Step 2: Verify the PriorityClass was created
+
+```sh
+kubectl get priorityclass low-priority
+kubectl describe priorityclass low-priority
+```
+
+Step 3: Check the existing pod
+
+```sh
+kubectl get pod lp-pod -n low-priority
+kubectl describe pod lp-pod -n low-priority
+```
+
+Step 4: Export the pod configuration
+
+```sh
+kubectl get pod lp-pod -n low-priority -o yaml > lp-pod-backup.yaml
+```
+
+Step 5: Create a new pod manifest with the PriorityClass
+
+Create a new YAML file lp-pod-updated.yaml:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lp-pod
+  namespace: low-priority
+spec:
+  priorityClassName: low-priority
+  containers:
+  - name: <container-name>  # Use the container from the existing pod
+    image: <image-name>      # Use the image from the existing pod
+  # Copy other spec fields from the original pod as needed
+```
+
+Step 6: Delete the existing pod
+
+```sh
+kubectl delete pod lp-pod -n low-priority
+```
+
+Step 7: Create the new pod with PriorityClass
+
+```sh
+kubectl apply -f lp-pod-updated.yaml
+```
+
+Step 8: Verify the pod is using the PriorityClass
+
+```sh
+kubectl get pod lp-pod -n low-priority
+kubectl describe pod lp-pod -n low-priority | grep -i priority
+```
+
+Alternative Method: Using kubectl patch (if supported)
+Note: This method won't work because priorityClassName is an immutable field in pod specs. The pod must be recreated.
+
+Complete Example Workflow:
+
+```sh
+# Step 1: Create PriorityClass
+cat <<EOF | kubectl apply -f -
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 50000
+globalDefault: false
+description: "Low priority class for less critical workloads"
+EOF
+
+# Step 2: Verify PriorityClass
+kubectl get priorityclass low-priority
+
+# Step 3: Get existing pod details
+kubectl get pod lp-pod -n low-priority -o yaml > original-pod.yaml
+
+# Step 4: Extract essential information
+kubectl get pod lp-pod -n low-priority -o jsonpath='{.spec.containers[0].image}'
+kubectl get pod lp-pod -n low-priority -o jsonpath='{.spec.containers[0].name}'
+
+# Step 5: Delete existing pod
+kubectl delete pod lp-pod -n low-priority
+
+# Step 6: Recreate pod with PriorityClass
+kubectl run lp-pod --image=<image-from-step-4> -n low-priority --dry-run=client -o yaml > new-pod.yaml
+
+# Edit new-pod.yaml to add:
+# spec:
+#   priorityClassName: low-priority
+
+kubectl apply -f new-pod.yaml
+
+# Step 7: Verify
+kubectl describe pod lp-pod -n low-priority | grep -A 2 -B 2 Priority
+```
+
+
+Key Points:
+- PriorityClass value: Higher values indicate higher priority (50000 is relatively high priority)
+- Pod recreation required: The priorityClassName field cannot be modified on existing pods
+- Immutable field: Priority class can only be set during pod creation
+- Scheduling impact: Pods with higher priority values are scheduled before lower priority pods
+
+Verification Commands:
+
+```sh
+# Check PriorityClass exists
+kubectl get priorityclass
+
+# Verify pod is using the priority class
+kubectl get pod lp-pod -n low-priority -o jsonpath='{.spec.priorityClassName}'
+
+# Check pod priority value
+kubectl get pod lp-pod -n low-priority -o jsonpath='{.spec.priority}'
+
+# Describe pod to see full priority information
+kubectl describe pod lp-pod -n low-priority | grep -i priority
+```
+
+Expected Result:
+- PriorityClass low-priority is created with value 50000
+- Pod lp-pod is recreated in the low-priority namespace
+- The new pod uses the low-priority PriorityClass
+- The pod shows priority value 50000 when described
+- Kubernetes scheduler will consider this pod's priority during scheduling decisions
 
 6. We have deployed a new pod called **np-test-1** and a service called **np-test-service**. Incoming connections to this service are not working. Troubleshoot and fix it.
 Create NetworkPolicy, by the name **ingress-to-nptest** that allows incoming connections to the service over port **80**.
 
 Important: Don't delete any current objects deployed.
+
+Solution Steps
+Step 1: Check the existing pod and service
+
+```sh
+kubectl get pod np-test-1
+kubectl get service np-test-service
+kubectl describe pod np-test-1
+kubectl describe service np-test-service
+```
+
+Step 2: Check if there are any existing NetworkPolicies
+
+```sh
+kubectl get networkpolicy
+kubectl get netpol
+```
+
+Step 3: Test connectivity to the service (to confirm the issue)
+
+```sh
+# Get the service IP
+kubectl get service np-test-service -o jsonpath='{.spec.clusterIP}'
+
+# Try to connect to the service
+kubectl run test-pod --image=busybox --rm -it --restart=Never -- wget -qO- http://np-test-service/
+```
+
+Step 4: Identify the pod labels and namespace
+
+```sh
+kubectl get pod np-test-1 --show-labels
+kubectl get pod np-test-1 -o yaml | grep -A 5 labels
+```
+
+Step 5: Create the NetworkPolicy to allow ingress traffic
+
+Create a YAML file:
+
+```yaml
+# ingress-to-nptest.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-to-nptest
+  namespace: default  # Adjust if the pod is in a different namespace
+spec:
+  podSelector:
+    matchLabels:
+      # Use the labels from the np-test-1 pod
+      app: np-test-1  # Adjust based on actual pod labels
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 80
+    from: []  # Allow from all sources
+```
+
+Alternative: More specific NetworkPolicy (if you want to restrict sources)
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-to-nptest
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: np-test-1  # Adjust based on actual pod labels
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 80
+    from:
+    - podSelector: {}  # Allow from all pods in the same namespace
+    - namespaceSelector: {}  # Allow from all namespaces
+```
+
+Step 6: Apply the NetworkPolicy
+
+```sh
+kubectl apply -f ingress-to-nptest.yaml
+```
+
+Step 7: Verify the NetworkPolicy was created
+
+```sh
+kubectl get networkpolicy ingress-to-nptest
+kubectl describe networkpolicy ingress-to-nptest
+```
+
+Step 8: Test connectivity again
+
+```sh
+# Test the service connectivity
+kubectl run test-connectivity --image=busybox --rm -it --restart=Never -- wget -qO- http://np-test-service/
+
+# Or test with curl
+kubectl run test-curl --image=curlimages/curl --rm -it --restart=Never -- curl http://np-test-service/
+```
+
+Step 9: Verify the service is working properly
+
+```sh
+# Check if the service endpoints are correct
+kubectl get endpoints np-test-service
+
+# Check service details
+kubectl describe service np-test-service
+```
+
+Troubleshooting Steps if it still doesn't work:
+
+Check pod readiness:
+
+```sh
+kubectl get pod np-test-1 -o wide
+kubectl logs np-test-1
+```
+
+Check service selector:
+
+```sh
+kubectl get service np-test-service -o yaml | grep -A 5 selector
+kubectl get pod np-test-1 --show-labels
+```
+
+Check if the application is listening on port 80:
+
+```sh
+kubectl exec np-test-1 -- netstat -ln | grep :80
+```
+
+Complete Example Workflow:
+
+```sh
+# Step 1: Inspect existing resources
+kubectl get pod np-test-1 --show-labels
+kubectl get service np-test-service
+kubectl describe service np-test-service
+
+# Step 2: Create NetworkPolicy
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-to-nptest
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      run: np-test-1  # Common label when created with kubectl run
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 80
+EOF
+
+# Step 3: Verify NetworkPolicy
+kubectl get networkpolicy ingress-to-nptest
+kubectl describe networkpolicy ingress-to-nptest
+
+# Step 4: Test connectivity
+kubectl run test-connection --image=busybox --rm -it --restart=Never -- wget -qO- http://np-test-service/
+```
+
+Key Points:
+  -NetworkPolicy blocks traffic by default: When a NetworkPolicy exists that selects a pod, all traffic not explicitly allowed is blocked
+  -podSelector: Must match the exact labels on the target pod (np-test-1)
+  -Ingress rules: Define what traffic is allowed to reach the pod
+  -Port specification: Must match the port the application is listening on (80)
+  from: []: Allows traffic from any source (most permissive)
+  -Expected Result:
+    -NetworkPolicy ingress-to-nptest is created successfully
+    -Incoming connections to np-test-service on port 80 are now allowed
+    -The service becomes accessible from other pods/services in the cluster
+    -Connectivity tests pass without errors
+
+Note: Make sure to adjust the podSelector.matchLabels based on the actual labels of the np-test-1 pod. Use kubectl get pod np-test-1 --show-labels to see the exact labels.
+
 
 7. Taint the worker node node01 to be Unschedulable. Once done, create a pod called **dev-redis**, image **redis:alpine**, to ensure workloads are not scheduled to this worker node. Finally, create a new pod called **prod-redis** and image: **redis:alpine** with toleration to be scheduled on node01.
 
