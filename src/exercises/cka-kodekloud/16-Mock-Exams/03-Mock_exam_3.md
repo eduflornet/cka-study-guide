@@ -953,6 +953,160 @@ Note: Make sure to adjust the podSelector.matchLabels based on the actual labels
 
 key: **env_type**, value: **production**, operator: **Equal** and effect: **NoSchedule**
 
+Step-by-Step Solution
+Step 1: Taint the node01 worker node
+
+```sh
+kubectl taint nodes node01 env_type=production:NoSchedule
+```
+Explanation: This command adds a taint to node01 with:
+
+Key: env_type
+Value: production
+Effect: NoSchedule (prevents new pods from being scheduled)
+
+Step 2: Verify the taint was applied
+
+```sh
+kubectl describe node node01 | grep -i taint
+```
+
+You should see output like:
+
+Taints: env_type=production:NoSchedule
+
+Step 3: Create the dev-redis pod (without toleration)
+Method 1: Imperative command
+
+```sh
+kubectl run dev-redis --image=redis:alpine
+```
+
+Method 2: Declarative YAML
+
+```yaml
+# dev-redis.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-redis
+spec:
+  containers:
+  - name: dev-redis
+    image: redis:alpine
+```
+
+Apply with:
+
+```sh
+kubectl apply -f dev-redis.yaml
+```
+
+Step 4: Create the prod-redis pod (with toleration)
+Declarative YAML (Recommended)
+
+```yaml
+# prod-redis.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prod-redis
+spec:
+  tolerations:
+  - key: "env_type"
+    operator: "Equal"
+    value: "production"
+    effect: "NoSchedule"
+  containers:
+  - name: prod-redis
+    image: redis:alpine
+```
+
+Apply with:
+
+```sh
+kubectl apply -f prod-redis.yaml
+```
+
+Step 5: Verify the scheduling behavior
+Check where pods are scheduled:
+
+```sh
+kubectl get pods -o wide
+```
+
+Expected results:
+
+dev-redis: Should be scheduled on a node OTHER than node01 (like controlplane)
+prod-redis: Should be scheduled on node01 (because it has the toleration)
+Step 6: Additional verification commands
+Check pod status:
+
+```sh
+kubectl get pods dev-redis -o wide
+kubectl get pods prod-redis -o wide
+```
+
+Check node taints:
+
+```sh
+kubectl get nodes -o json | jq '.items[] | {name: .metadata.name, taints: .spec.taints}'
+```
+
+Describe pods to see scheduling decisions:
+
+```sh
+kubectl describe pod dev-redis
+kubectl describe pod prod-redis
+```
+
+Key Concepts Explained
+1. Taints
+
+Applied to nodes to repel pods
+Format: key=value:effect
+Effects: NoSchedule, PreferNoSchedule, NoExecute
+2. Tolerations
+
+Applied to pods to tolerate specific taints
+Must match the taint's key, value, operator, and effect
+3. Scheduling Logic
+
+Pods without tolerations cannot be scheduled on tainted nodes
+Pods with matching tolerations can be scheduled on tainted nodes
+Other untainted nodes remain available for all pods
+
+Troubleshooting Tips
+If dev-redis gets scheduled on node01:
+
+Check if the taint was applied correctly
+Verify no toleration exists in the pod spec
+If prod-redis doesn't get scheduled on node01:
+
+Verify the toleration matches exactly:
+Key: env_type
+Value: production
+Operator: Equal
+Effect: NoSchedule
+
+If pods remain in Pending state:
+
+Check if there are enough resources on available nodes
+Use kubectl describe pod <pod-name> to see scheduling failures
+
+Expected Final State
+
+```sh
+kubectl get pods -o wide
+```
+
+Should show something like:
+
+
+NAME        READY   STATUS    RESTARTS   AGE   IP         NODE           
+dev-redis   1/1     Running   0          2m    10.x.x.x   controlplane   
+prod-redis  1/1     Running   0          1m    10.x.x.x   node01         
+
 8. A PersistentVolumeClaim named **app-pvc** exists in the namespace **storage-ns**, but it is not getting bound to the available PersistentVolume named **app-pv**.
 
 Inspect both the PVC and PV and identify why the PVC is not being bound and fix the issue so that the PVC successfully binds to the PV. Do not modify the PV resource.
