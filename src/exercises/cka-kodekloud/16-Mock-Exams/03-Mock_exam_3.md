@@ -1380,7 +1380,602 @@ The key is to identify which specification mismatch is preventing the binding an
 
 9. A kubeconfig file called **super.kubeconfig** has been created under ``` /root/CKA ```. There is something wrong with the configuration. Troubleshoot and fix it.
 
+Step 1. Examine the kubeconfig file
+First, let's look at the file:
+
+```sh
+ls -la /root/CKA/
+cat /root/CKA/super.kubeconfig
+```
+
+Check the file structure
+
+```sh
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 2: Test the current kubeconfig
+Try to use the kubeconfig:
+
+```sh
+kubectl --kubeconfig=/root/CKA/super.kubeconfig get nodes
+```
+
+Check what errors appear:
+
+```sh
+kubectl --kubeconfig=/root/CKA/super.kubeconfig cluster-info
+```
+
+Step 3: Common kubeconfig issues to check
+Issue 1: Incorrect API Server URL
+Look for server address in clusters section:
+
+```yaml
+clusters:
+- cluster:
+    server: https://wrong-server:6443  # Wrong server
+```
+
+Fix: Update to correct server address
+
+```yaml
+clusters:
+- cluster:
+    server: https://controlplane:6443  # or correct IP
+```
+
+Issue 2: Wrong Certificate Authority Data
+Check certificate-authority-data:
+
+```yaml
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTi...  # Wrong/corrupted cert
+```
+
+Issue 3: Incorrect User Credentials
+Check client certificate and key:
+
+```yaml
+users:
+- user:
+    client-certificate-data: LS0tLS1CRUdJTi...  # Wrong cert
+    client-key-data: LS0tLS1CRUdJTi...          # Wrong key
+```
+
+Issue 4: Wrong Context Configuration
+Check context settings:
+
+```yaml
+contexts:
+- context:
+    cluster: wrong-cluster-name    # Doesn't match cluster name
+    user: wrong-user-name          # Doesn't match user name
+```
+
+Step 4: Systematic troubleshooting approach
+Step 4a: Compare with working kubeconfig
+
+```sh
+# Compare structure with working config
+kubectl config view --kubeconfig=/root/.kube/config
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 4b: Check individual components
+
+Test cluster connectivity:
+
+```sh
+# Extract server URL from kubeconfig
+SERVER=$(kubectl config view --kubeconfig=/root/CKA/super.kubeconfig --minify -o jsonpath='{.clusters[0].cluster.server}')
+echo "Server: $SERVER"
+
+# Test if server is reachable
+curl -k $SERVER/version
+```
+
+Validate certificates:
+
+```sh
+# Check if certificate data is valid base64
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d | openssl x509 -text -noout
+```
+
+Step 5: Common fixes
+Fix 1: Correct the server URL
+
+```sh
+# If server URL is wrong, update it
+kubectl config set-cluster kubernetes --server=https://controlplane:6443 --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Fix 2: Copy certificates from working config
+
+```sh
+# Copy CA certificate from working config
+CA_DATA=$(kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+kubectl config set clusters.kubernetes.certificate-authority-data $CA_DATA --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Fix 3: Fix user credentials
+
+```sh
+# Copy user cert and key from working config
+CLIENT_CERT=$(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-certificate-data}')
+CLIENT_KEY=$(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-key-data}')
+
+kubectl config set users.kubernetes-admin.client-certificate-data $CLIENT_CERT --kubeconfig=/root/CKA/super.kubeconfig
+kubectl config set users.kubernetes-admin.client-key-data $CLIENT_KEY --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Fix 4: Correct context references
+
+```sh
+# Make sure context references exist
+kubectl config set-context kubernetes-admin@kubernetes --cluster=kubernetes --user=kubernetes-admin --kubeconfig=/root/CKA/super.kubeconfig
+kubectl config use-context kubernetes-admin@kubernetes --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 6: Complete troubleshooting workflow
+Check the original file structure:
+
+```sh
+echo "=== Original kubeconfig structure ==="
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig
+
+echo "=== Working kubeconfig structure ==="
+kubectl config view --kubeconfig=/root/.kube/config
+```
+
+Identify specific issues:
+
+```sh
+# Test connectivity with current config
+echo "=== Testing connectivity ==="
+kubectl --kubeconfig=/root/CKA/super.kubeconfig get nodes 2>&1
+
+# Check if it's a server URL issue
+echo "=== Checking server URL ==="
+grep -A 5 "server:" /root/CKA/super.kubeconfig
+
+# Check if it's a certificate issue
+echo "=== Checking certificates ==="
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig --raw | grep -A 2 -B 2 "certificate-authority-data"
+```
+
+Step 7: Most likely fix scenarios
+Scenario A: Wrong server port (common mistake)
+
+```sh
+# Original (wrong):
+# server: https://controlplane:6444
+
+# Fix:
+kubectl config set-cluster kubernetes --server=https://controlplane:6443 --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Scenario B: Missing or wrong cluster name reference
+
+```sh
+# Check current cluster name
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig | grep "name:" | head -1
+
+# Update context to use correct cluster name
+kubectl config set-context kubernetes-admin@kubernetes --cluster=kubernetes --user=kubernetes-admin --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Scenario C: Corrupted certificate data
+
+```sh
+# Copy working certificates
+cp /root/.kube/config /root/CKA/super.kubeconfig.backup
+
+# Extract and copy CA cert from working config
+kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | \
+kubectl config set clusters.kubernetes.certificate-authority-data - --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 8: Comprehensive fix script
+
+```sh
+#!/bin/bash
+# Comprehensive kubeconfig fix script
+
+KUBECONFIG_FILE="/root/CKA/super.kubeconfig"
+WORKING_CONFIG="/root/.kube/config"
+
+echo "Fixing kubeconfig: $KUBECONFIG_FILE"
+
+# 1. Set correct server URL
+kubectl config set-cluster kubernetes \
+  --server=https://controlplane:6443 \
+  --kubeconfig=$KUBECONFIG_FILE
+
+# 2. Copy CA certificate from working config
+CA_DATA=$(kubectl config view --raw --kubeconfig=$WORKING_CONFIG --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+kubectl config set clusters.kubernetes.certificate-authority-data "$CA_DATA" --kubeconfig=$KUBECONFIG_FILE
+
+# 3. Copy client certificate and key
+CLIENT_CERT=$(kubectl config view --raw --kubeconfig=$WORKING_CONFIG --minify -o jsonpath='{.users[0].user.client-certificate-data}')
+CLIENT_KEY=$(kubectl config view --raw --kubeconfig=$WORKING_CONFIG --minify -o jsonpath='{.users[0].user.client-key-data}')
+
+kubectl config set users.kubernetes-admin.client-certificate-data "$CLIENT_CERT" --kubeconfig=$KUBECONFIG_FILE
+kubectl config set users.kubernetes-admin.client-key-data "$CLIENT_KEY" --kubeconfig=$KUBECONFIG_FILE
+
+# 4. Set correct context
+kubectl config set-context kubernetes-admin@kubernetes \
+  --cluster=kubernetes \
+  --user=kubernetes-admin \
+  --kubeconfig=$KUBECONFIG_FILE
+
+# 5. Use the context
+kubectl config use-context kubernetes-admin@kubernetes --kubeconfig=$KUBECONFIG_FILE
+
+echo "Testing fixed kubeconfig..."
+kubectl --kubeconfig=$KUBECONFIG_FILE get nodes
+```
+
+Expected Outcome
+After fixing the kubeconfig:
+
+✅ kubectl --kubeconfig=/root/CKA/super.kubeconfig get nodes works
+✅ No connection refused or certificate errors
+✅ Can access cluster resources normally
+✅ Kubeconfig structure is valid and complete
+Common Error Messages and Solutions
+
+Common Error Messages and Solutions
+
+Error	                                      Likely Cause	            Solution
+"connection refused"	                      Wrong server URL/port	    Fix server address
+"certificate signed by unknown authority"	  Wrong CA certificate	    Copy CA from working config
+"Unauthorized"	Wrong client credentials	  Copy client cert/key
+"context not found"	Wrong context name	    Fix context configuration
+
+The key is to systematically check each component of the kubeconfig (clusters, users, contexts) and compare with a working configuration to identify and fix the specific issue.
+
 10. We have created a new deployment called **nginx-deploy**. Scale the deployment to **3 replicas**. Has the number of replicas increased? Troubleshoot and fix the issue.
+
+Step 1. Check the current state of the deployment
+Check deployment status:
+
+```sh
+kubectl get deployment nginx-deploy
+kubectl get deployment nginx-deploy -o wide
+```
+
+Check current replica count:
+
+```sh
+kubectl describe deployment nginx-deploy
+```
+
+Check pods associated with the deployment:
+
+```sh
+kubectl get pods -l app=nginx-deploy
+# or check with deployment selector
+kubectl get pods --selector=$(kubectl get deployment nginx-deploy -o jsonpath='{.spec.selector.matchLabels}' | tr -d '{}' | tr ',' ' ' | sed 's/:/=/g')
+```
+This command retrieves the list of pods that match the label selector used by the Kubernetes Deployment named nginx-deploy.
+
+🔍 Step-by-Step Breakdown
+kubectl get deployment nginx-deploy -o jsonpath='{.spec.selector.matchLabels}'
+
+This extracts the label selectors defined in the nginx-deploy deployment.
+
+Example output: {app:nginx,tier=frontend}
+
+tr -d '{}'
+
+- Removes the curly braces {} from the output.
+
+tr ',' ' '
+
+- Replaces commas with spaces, so multiple labels become space-separated.
+
+sed 's/:/=/g'
+
+- Replaces colons (:) with equals signs (=), converting the format from key:value to key=value, which is the format expected by kubectl get pods --selector.
+
+kubectl get pods --selector=...
+
+Finally, this uses the transformed label selector to list all pods that match the same labels as the nginx-deploy deployment.
+
+Step 2: Scale the deployment to 3 replicas
+Scale using kubectl scale command:
+
+```sh
+kubectl scale deployment nginx-deploy --replicas=3
+```
+
+Alternative method using kubectl patch:
+
+```sh
+kubectl patch deployment nginx-deploy -p '{"spec":{"replicas":3}}'
+```
+
+Step 3: Monitor the scaling process
+Watch the deployment scaling:
+
+```sh
+kubectl get deployment nginx-deploy -w
+```
+
+Check rollout status:
+
+```sh
+kubectl rollout status deployment/nginx-deploy
+```
+
+Monitor pods creation:
+
+```sh
+kubectl get pods -l app=nginx-deploy -w
+```
+
+Step 4: Troubleshoot if scaling fails
+If the replicas don't increase to 3, check these common issues:
+
+Issue 1: Resource Constraints
+Check node resources:
+
+```sh
+kubectl top nodes
+kubectl describe nodes
+```
+
+Check if pods are pending due to insufficient resources:
+
+```sh
+kubectl get pods -l app=nginx-deploy
+kubectl describe pods <pending-pod-name>
+```
+
+Look for resource-related events:
+
+```sh
+kubectl get events --sort-by='.lastTimestamp' | grep nginx-deploy
+```
+
+Issue 2: Pod Security Policies or Admission Controllers
+Check for admission controller issues:
+
+```sh
+kubectl describe deployment nginx-deploy
+kubectl get events --sort-by='.lastTimestamp' | head -20
+```
+
+Issue 3: Image Pull Issues
+Check if pods can't start due to image problems:
+
+```sh
+kubectl describe pods -l app=nginx-deploy | grep -A 5 -B 5 "Failed"
+kubectl get pods -l app=nginx-deploy -o wide
+```
+
+Issue 4: Node Taints and Tolerations
+Check if nodes have taints preventing pod scheduling:
+
+```sh
+kubectl get nodes -o json | jq '.items[] | {name: .metadata.name, taints: .spec.taints}'
+kubectl describe nodes | grep -A 5 -B 5 "Taints"
+```
+
+Issue 5: Controller Manager Issues
+Check if the deployment controller is working:
+
+```sh
+kubectl get pods -n kube-system | grep controller-manager
+kubectl logs -n kube-system kube-controller-manager-controlplane
+```
+
+Step 5: Systematic troubleshooting workflow
+Step 5a: Verify deployment configuration
+
+
+```sh
+echo "=== Deployment Status ==="
+kubectl get deployment nginx-deploy -o yaml
+
+echo "=== Current Pods ==="
+kubectl get pods -l app=nginx-deploy -o wide
+
+echo "=== Recent Events ==="
+kubectl get events --sort-by='.lastTimestamp' | grep nginx-deploy | head -10
+```
+
+Step 5b: Check replica set
+
+```sh
+echo "=== ReplicaSet Status ==="
+kubectl get replicaset -l app=nginx-deploy
+kubectl describe replicaset -l app=nginx-deploy
+```
+
+Step 5c: Check scheduler and controller logs
+
+```sh
+echo "=== Scheduler Logs ==="
+kubectl logs -n kube-system kube-scheduler-controlplane --tail=20
+
+echo "=== Controller Manager Logs ==="
+kubectl logs -n kube-system kube-controller-manager-controlplane --tail=20
+```
+
+Step 6: Common fixes for scaling issues
+Fix 1: Insufficient Resources
+If nodes don't have enough CPU/memory:
+
+```sh
+# Check resource requests in deployment
+kubectl describe deployment nginx-deploy | grep -A 5 "Requests"
+
+# Option 1: Reduce resource requests
+kubectl patch deployment nginx-deploy -p='{"spec":{"template":{"spec":{"containers":[{"name":"nginx","resources":{"requests":{"cpu":"50m","memory":"64Mi"}}}]}}}}'
+
+# Option 2: Add more nodes (if possible in the environment)
+```
+
+Fix 2: Node Taints
+If nodes are tainted:
+
+```sh
+# Remove taints from nodes (if appropriate)
+kubectl taint nodes <node-name> <taint-key>:<taint-value>:<effect>-
+
+# Or add tolerations to deployment
+kubectl patch deployment nginx-deploy -p='{"spec":{"template":{"spec":{"tolerations":[{"key":"<taint-key>","operator":"Equal","value":"<taint-value>","effect":"<effect>"}]}}}}'
+```
+
+Fix 3: Image Pull Issues
+If image can't be pulled:
+
+
+```sh
+# Check image name in deployment
+kubectl describe deployment nginx-deploy | grep Image
+
+# Update to a working image if needed
+kubectl set image deployment/nginx-deploy nginx=nginx:latest
+```
+
+Fix 4: Restart Controller Manager
+If controller manager is stuck:
+
+```sh
+# Check controller manager status
+kubectl get pods -n kube-system kube-controller-manager-controlplane
+
+# If needed, restart by deleting the pod (it will auto-restart)
+kubectl delete pod -n kube-system kube-controller-manager-controlplane
+```
+
+Step 7: Complete troubleshooting script
+
+```sh
+#!/bin/bash
+echo "=== Deployment Scaling Troubleshooting ==="
+
+# Step 1: Current state
+echo "1. Current deployment state:"
+kubectl get deployment nginx-deploy
+kubectl get pods -l app=nginx-deploy
+
+# Step 2: Scale deployment
+echo "2. Scaling deployment to 3 replicas:"
+kubectl scale deployment nginx-deploy --replicas=3
+
+# Step 3: Wait and check
+echo "3. Waiting for scaling to complete..."
+sleep 10
+kubectl get deployment nginx-deploy
+
+# Step 4: Check if scaling worked
+CURRENT_REPLICAS=$(kubectl get deployment nginx-deploy -o jsonpath='{.status.readyReplicas}')
+DESIRED_REPLICAS=$(kubectl get deployment nginx-deploy -o jsonpath='{.spec.replicas}')
+
+echo "Desired replicas: $DESIRED_REPLICAS"
+echo "Current ready replicas: $CURRENT_REPLICAS"
+
+if [ "$CURRENT_REPLICAS" != "$DESIRED_REPLICAS" ]; then
+    echo "4. Scaling issue detected. Troubleshooting..."
+    
+    # Check pods status
+    echo "Pod status:"
+    kubectl get pods -l app=nginx-deploy
+    
+    # Check events
+    echo "Recent events:"
+    kubectl get events --sort-by='.lastTimestamp' | grep nginx-deploy | head -5
+    
+    # Check node resources
+    echo "Node resources:"
+    kubectl top nodes 2>/dev/null || echo "Metrics server not available"
+    
+    # Check pending pods
+    PENDING_PODS=$(kubectl get pods -l app=nginx-deploy --field-selector=status.phase=Pending --no-headers 2>/dev/null | wc -l)
+    if [ "$PENDING_PODS" -gt 0 ]; then
+        echo "Found $PENDING_PODS pending pods. Describing first pending pod:"
+        PENDING_POD=$(kubectl get pods -l app=nginx-deploy --field-selector=status.phase=Pending --no-headers -o custom-columns=NAME:.metadata.name | head -1)
+        kubectl describe pod $PENDING_POD
+    fi
+else
+    echo "4. Scaling successful!"
+fi
+```
+
+Step 8: Monitor and verify the fix
+Check final state:
+
+
+```sh
+kubectl get deployment nginx-deploy
+kubectl get pods -l app=nginx-deploy
+kubectl rollout status deployment/nginx-deploy
+```
+
+Verify all pods are running:
+
+```sh
+kubectl get pods -l app=nginx-deploy -o wide
+kubectl describe deployment nginx-deploy | grep -A 10 "Replicas"
+```
+
+Step 9: Additional monitoring commands
+
+```sh
+# Watch deployment scaling in real-time
+kubectl get deployment nginx-deploy -w
+
+# Monitor pod creation
+kubectl get pods -l app=nginx-deploy -w
+
+# Check deployment history
+kubectl rollout history deployment/nginx-deploy
+
+# Verify service connectivity (if service exists)
+kubectl get service nginx-deploy 2>/dev/null || echo "No service found for deployment"
+```
+
+Expected Outcomes
+Successful scaling:
+
+✅ Deployment shows 3/3 ready replicas
+✅ Three pods are running and ready
+✅ No pending or failed pods
+✅ Events show successful pod creation
+Common issues and their indicators:
+
+Resource constraints: Pods stuck in Pending state with events about insufficient CPU/memory
+Image issues: Pods in ImagePullBackOff or ErrImagePull state
+Node taints: Pods pending with events about node not accepting pods
+Controller issues: Deployment stuck, no new ReplicaSet created
+
+Key Troubleshooting Commands Summary
+
+```sh
+# Quick diagnosis
+kubectl get deployment nginx-deploy
+kubectl get pods -l app=nginx-deploy
+kubectl get events --sort-by='.lastTimestamp' | head -10
+
+# Scale deployment
+kubectl scale deployment nginx-deploy --replicas=3
+
+# Monitor scaling
+kubectl rollout status deployment/nginx-deploy
+
+# Troubleshoot issues
+kubectl describe deployment nginx-deploy
+kubectl describe pods -l app=nginx-deploy
+kubectl top nodes
+```
+
+The key is to systematically check the deployment status, scale it, monitor the process, and troubleshoot any issues that prevent the scaling from completing successfully.
+
 
 11. Create a Horizontal Pod Autoscaler (HPA) **api-hpa** for the deployment named **api-deployment** located in the **api namespace**.
 The HPA should scale the deployment based on a custom metric named **requests_per_second**, targeting an average value of **1000** requests per second across all pods.
