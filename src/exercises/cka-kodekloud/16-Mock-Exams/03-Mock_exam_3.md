@@ -1111,6 +1111,273 @@ prod-redis  1/1     Running   0          1m    10.x.x.x   node01
 
 Inspect both the PVC and PV and identify why the PVC is not being bound and fix the issue so that the PVC successfully binds to the PV. Do not modify the PV resource.
 
+Step-by-Step Solution
+Step 1: Inspect the current state of PVC and PV
+Check the PVC status:
+
+```sh
+kubectl get pvc app-pvc -n storage-ns
+kubectl describe pvc app-pvc -n storage-ns
+```
+
+Check the PV status:
+
+```sh
+kubectl get pv app-pv
+kubectl describe pv app-pv
+```
+
+Step 2: Identify common binding issues
+The most common reasons why a PVC doesn't bind to a PV are:
+
+1. Storage size mismatch - PVC requests more storage than PV provides
+2. Access mode mismatch - PVC and PV have incompatible access modes
+3. Storage class mismatch - Different storage classes specified
+4. Selector mismatch - PVC has a selector that doesn't match PV labels
+Node affinity - PV has node affinity that conflicts with available nodes
+
+Step 3: Compare PVC and PV specifications
+Get detailed YAML output:
+
+```sh
+kubectl get pvc app-pvc -n storage-ns -o yaml
+kubectl get pv app-pv -o yaml
+```
+
+Key fields to compare:
+
+Field	          PVC Location	                     PV Location
+Storage Size	  spec.resources.requests.storage	  spec.capacity.storage
+Access Modes	  spec.accessModes	                spec.accessModes
+Storage Class	  spec.storageClassName	            spec.storageClassName
+Selectors	      spec.selector	                    metadata.labels
+
+Step 4: Most likely issues and solutions
+Issue 1: Storage Size Mismatch
+
+Problem: PVC requests more storage than PV provides
+
+```yaml
+# PVC might have:
+spec:
+  resources:
+    requests:
+      storage: 2Gi
+
+# PV might have:
+spec:
+  capacity:
+    storage: 1Gi
+```
+
+Solution: Edit the PVC to request less storage
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Change the storage request to match or be less than the PV capacity.
+
+Issue 2: Access Mode Mismatch
+Problem: Incompatible access modes
+
+```yaml
+# PVC might have:
+spec:
+  accessModes:
+    - ReadWriteMany
+
+# PV might have:
+spec:
+  accessModes:
+    - ReadWriteOnce
+```
+
+Solution: Edit the PVC to use compatible access modes
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Issue 3: Storage Class Mismatch
+Problem: Different storage classes
+
+```yaml
+# PVC might have:
+spec:
+  storageClassName: "fast-ssd"
+
+# PV might have:
+spec:
+  storageClassName: "standard"
+```
+
+Solution: Edit the PVC to match PV's storage class or remove it
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Issue 4: Selector Mismatch
+Problem: PVC has a selector that doesn't match PV labels
+
+```yaml
+# PVC might have:
+spec:
+  selector:
+    matchLabels:
+      environment: production
+
+# PV might have:
+metadata:
+  labels:
+    environment: development
+```
+
+Solution: Remove or adjust the selector in PVC
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Step 5: Complete troubleshooting workflow
+
+```sh
+# Step 1: Check current status
+kubectl get pvc app-pvc -n storage-ns -o wide
+kubectl get pv app-pv -o wide
+
+# Step 2: Detailed inspection
+echo "=== PVC Details ==="
+kubectl describe pvc app-pvc -n storage-ns
+
+echo "=== PV Details ==="
+kubectl describe pv app-pv
+
+# Step 3: Compare specifications side by side
+echo "=== PVC Spec ==="
+kubectl get pvc app-pvc -n storage-ns -o jsonpath='{.spec}' | jq
+
+echo "=== PV Spec ==="
+kubectl get pv app-pv -o jsonpath='{.spec}' | jq
+
+# Step 4: Check events for clues
+kubectl get events -n storage-ns --sort-by='.lastTimestamp'
+```
+Step 6: Example fix scenarios
+Scenario A: Storage size too large
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+# Change from:
+#   resources:
+#     requests:
+#       storage: 10Gi
+# To:
+#   resources:
+#     requests:
+#       storage: 5Gi  # Match PV capacity
+```
+
+Scenario B: Wrong access mode
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+# Change from:
+#   accessModes:
+#     - ReadWriteMany
+# To:
+#   accessModes:
+#     - ReadWriteOnce  # Match PV access mode
+```
+
+Scenario C: Remove storage class
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+# Remove or comment out:
+# storageClassName: "wrong-class"
+# Or set to match PV:
+# storageClassName: "correct-class"
+```
+
+Step 7: Verify the fix
+Check binding status:
+
+```sh
+kubectl get pvc app-pvc -n storage-ns
+# Should show STATUS: Bound
+
+kubectl get pv app-pv
+# Should show STATUS: Bound and CLAIM: storage-ns/app-pvc
+```
+
+Verify the binding:
+
+```sh
+kubectl describe pvc app-pvc -n storage-ns | grep -A 5 "Volume:"
+kubectl describe pv app-pv | grep -A 5 "ClaimRef:"
+```
+
+Step 8: Test with a pod (optional)
+Create a test pod to verify the volume works:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: storage-ns
+spec:
+  containers:
+  - name: test-container
+    image: busybox
+    command: ["sleep", "3600"]
+    volumeMounts:
+    - name: test-volume
+      mountPath: /data
+  volumes:
+  - name: test-volume
+    persistentVolumeClaim:
+      claimName: app-pvc
+```
+
+```sh
+kubectl apply -f test-pod.yaml
+kubectl exec -it test-pod -n storage-ns -- ls -la /data
+```
+
+Common Commands Summary
+
+```sh
+# Quick diagnosis
+kubectl get pvc,pv -o wide
+
+# Detailed inspection
+kubectl describe pvc app-pvc -n storage-ns
+kubectl describe pv app-pv
+
+# Compare specs
+kubectl get pvc app-pvc -n storage-ns -o yaml
+kubectl get pv app-pv -o yaml
+
+# Edit PVC if needed
+kubectl edit pvc app-pvc -n storage-ns
+
+# Verify binding
+kubectl get pvc app-pvc -n storage-ns
+kubectl get pv app-pv
+```
+
+Expected Outcome
+After fixing the mismatch:
+
+PVC status changes from Pending to Bound
+PV status changes from Available to Bound
+PV shows the correct ClaimRef pointing to storage-ns/app-pvc
+The volume can be successfully mounted by pods
+The key is to identify which specification mismatch is preventing the binding and adjust the PVC accordingly without modifying the PV resource.
+
 9. A kubeconfig file called **super.kubeconfig** has been created under ``` /root/CKA ```. There is something wrong with the configuration. Troubleshoot and fix it.
 
 10. We have created a new deployment called **nginx-deploy**. Scale the deployment to **3 replicas**. Has the number of replicas increased? Troubleshoot and fix the issue.
