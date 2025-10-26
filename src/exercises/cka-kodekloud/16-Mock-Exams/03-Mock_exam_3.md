@@ -953,19 +953,1420 @@ Note: Make sure to adjust the podSelector.matchLabels based on the actual labels
 
 key: **env_type**, value: **production**, operator: **Equal** and effect: **NoSchedule**
 
+Step-by-Step Solution
+Step 1: Taint the node01 worker node
+
+```sh
+kubectl taint nodes node01 env_type=production:NoSchedule
+```
+Explanation: This command adds a taint to node01 with:
+
+Key: env_type
+Value: production
+Effect: NoSchedule (prevents new pods from being scheduled)
+
+Step 2: Verify the taint was applied
+
+```sh
+kubectl describe node node01 | grep -i taint
+```
+
+You should see output like:
+
+Taints: env_type=production:NoSchedule
+
+Step 3: Create the dev-redis pod (without toleration)
+Method 1: Imperative command
+
+```sh
+kubectl run dev-redis --image=redis:alpine
+```
+
+Method 2: Declarative YAML
+
+```yaml
+# dev-redis.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dev-redis
+spec:
+  containers:
+  - name: dev-redis
+    image: redis:alpine
+```
+
+Apply with:
+
+```sh
+kubectl apply -f dev-redis.yaml
+```
+
+Step 4: Create the prod-redis pod (with toleration)
+Declarative YAML (Recommended)
+
+```yaml
+# prod-redis.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prod-redis
+spec:
+  tolerations:
+  - key: "env_type"
+    operator: "Equal"
+    value: "production"
+    effect: "NoSchedule"
+  containers:
+  - name: prod-redis
+    image: redis:alpine
+```
+
+Apply with:
+
+```sh
+kubectl apply -f prod-redis.yaml
+```
+
+Step 5: Verify the scheduling behavior
+Check where pods are scheduled:
+
+```sh
+kubectl get pods -o wide
+```
+
+Expected results:
+
+dev-redis: Should be scheduled on a node OTHER than node01 (like controlplane)
+prod-redis: Should be scheduled on node01 (because it has the toleration)
+Step 6: Additional verification commands
+Check pod status:
+
+```sh
+kubectl get pods dev-redis -o wide
+kubectl get pods prod-redis -o wide
+```
+
+Check node taints:
+
+```sh
+kubectl get nodes -o json | jq '.items[] | {name: .metadata.name, taints: .spec.taints}'
+```
+
+Describe pods to see scheduling decisions:
+
+```sh
+kubectl describe pod dev-redis
+kubectl describe pod prod-redis
+```
+
+Key Concepts Explained
+1. Taints
+
+Applied to nodes to repel pods
+Format: key=value:effect
+Effects: NoSchedule, PreferNoSchedule, NoExecute
+2. Tolerations
+
+Applied to pods to tolerate specific taints
+Must match the taint's key, value, operator, and effect
+3. Scheduling Logic
+
+Pods without tolerations cannot be scheduled on tainted nodes
+Pods with matching tolerations can be scheduled on tainted nodes
+Other untainted nodes remain available for all pods
+
+Troubleshooting Tips
+If dev-redis gets scheduled on node01:
+
+Check if the taint was applied correctly
+Verify no toleration exists in the pod spec
+If prod-redis doesn't get scheduled on node01:
+
+Verify the toleration matches exactly:
+Key: env_type
+Value: production
+Operator: Equal
+Effect: NoSchedule
+
+If pods remain in Pending state:
+
+Check if there are enough resources on available nodes
+Use kubectl describe pod <pod-name> to see scheduling failures
+
+Expected Final State
+
+```sh
+kubectl get pods -o wide
+```
+
+Should show something like:
+
+
+NAME        READY   STATUS    RESTARTS   AGE   IP         NODE           
+dev-redis   1/1     Running   0          2m    10.x.x.x   controlplane   
+prod-redis  1/1     Running   0          1m    10.x.x.x   node01         
+
 8. A PersistentVolumeClaim named **app-pvc** exists in the namespace **storage-ns**, but it is not getting bound to the available PersistentVolume named **app-pv**.
 
 Inspect both the PVC and PV and identify why the PVC is not being bound and fix the issue so that the PVC successfully binds to the PV. Do not modify the PV resource.
 
+Step-by-Step Solution
+Step 1: Inspect the current state of PVC and PV
+Check the PVC status:
+
+```sh
+kubectl get pvc app-pvc -n storage-ns
+kubectl describe pvc app-pvc -n storage-ns
+```
+
+Check the PV status:
+
+```sh
+kubectl get pv app-pv
+kubectl describe pv app-pv
+```
+
+Step 2: Identify common binding issues
+The most common reasons why a PVC doesn't bind to a PV are:
+
+1. Storage size mismatch - PVC requests more storage than PV provides
+2. Access mode mismatch - PVC and PV have incompatible access modes
+3. Storage class mismatch - Different storage classes specified
+4. Selector mismatch - PVC has a selector that doesn't match PV labels
+Node affinity - PV has node affinity that conflicts with available nodes
+
+Step 3: Compare PVC and PV specifications
+Get detailed YAML output:
+
+```sh
+kubectl get pvc app-pvc -n storage-ns -o yaml
+kubectl get pv app-pv -o yaml
+```
+
+Key fields to compare:
+
+Field	          PVC Location	                     PV Location
+Storage Size	  spec.resources.requests.storage	  spec.capacity.storage
+Access Modes	  spec.accessModes	                spec.accessModes
+Storage Class	  spec.storageClassName	            spec.storageClassName
+Selectors	      spec.selector	                    metadata.labels
+
+Step 4: Most likely issues and solutions
+Issue 1: Storage Size Mismatch
+
+Problem: PVC requests more storage than PV provides
+
+```yaml
+# PVC might have:
+spec:
+  resources:
+    requests:
+      storage: 2Gi
+
+# PV might have:
+spec:
+  capacity:
+    storage: 1Gi
+```
+
+Solution: Edit the PVC to request less storage
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Change the storage request to match or be less than the PV capacity.
+
+Issue 2: Access Mode Mismatch
+Problem: Incompatible access modes
+
+```yaml
+# PVC might have:
+spec:
+  accessModes:
+    - ReadWriteMany
+
+# PV might have:
+spec:
+  accessModes:
+    - ReadWriteOnce
+```
+
+Solution: Edit the PVC to use compatible access modes
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Issue 3: Storage Class Mismatch
+Problem: Different storage classes
+
+```yaml
+# PVC might have:
+spec:
+  storageClassName: "fast-ssd"
+
+# PV might have:
+spec:
+  storageClassName: "standard"
+```
+
+Solution: Edit the PVC to match PV's storage class or remove it
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Issue 4: Selector Mismatch
+Problem: PVC has a selector that doesn't match PV labels
+
+```yaml
+# PVC might have:
+spec:
+  selector:
+    matchLabels:
+      environment: production
+
+# PV might have:
+metadata:
+  labels:
+    environment: development
+```
+
+Solution: Remove or adjust the selector in PVC
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+```
+
+Step 5: Complete troubleshooting workflow
+
+```sh
+# Step 1: Check current status
+kubectl get pvc app-pvc -n storage-ns -o wide
+kubectl get pv app-pv -o wide
+
+# Step 2: Detailed inspection
+echo "=== PVC Details ==="
+kubectl describe pvc app-pvc -n storage-ns
+
+echo "=== PV Details ==="
+kubectl describe pv app-pv
+
+# Step 3: Compare specifications side by side
+echo "=== PVC Spec ==="
+kubectl get pvc app-pvc -n storage-ns -o jsonpath='{.spec}' | jq
+
+echo "=== PV Spec ==="
+kubectl get pv app-pv -o jsonpath='{.spec}' | jq
+
+# Step 4: Check events for clues
+kubectl get events -n storage-ns --sort-by='.lastTimestamp'
+```
+Step 6: Example fix scenarios
+Scenario A: Storage size too large
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+# Change from:
+#   resources:
+#     requests:
+#       storage: 10Gi
+# To:
+#   resources:
+#     requests:
+#       storage: 5Gi  # Match PV capacity
+```
+
+Scenario B: Wrong access mode
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+# Change from:
+#   accessModes:
+#     - ReadWriteMany
+# To:
+#   accessModes:
+#     - ReadWriteOnce  # Match PV access mode
+```
+
+Scenario C: Remove storage class
+
+```sh
+kubectl edit pvc app-pvc -n storage-ns
+# Remove or comment out:
+# storageClassName: "wrong-class"
+# Or set to match PV:
+# storageClassName: "correct-class"
+```
+
+Step 7: Verify the fix
+Check binding status:
+
+```sh
+kubectl get pvc app-pvc -n storage-ns
+# Should show STATUS: Bound
+
+kubectl get pv app-pv
+# Should show STATUS: Bound and CLAIM: storage-ns/app-pvc
+```
+
+Verify the binding:
+
+```sh
+kubectl describe pvc app-pvc -n storage-ns | grep -A 5 "Volume:"
+kubectl describe pv app-pv | grep -A 5 "ClaimRef:"
+```
+
+Step 8: Test with a pod (optional)
+Create a test pod to verify the volume works:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: storage-ns
+spec:
+  containers:
+  - name: test-container
+    image: busybox
+    command: ["sleep", "3600"]
+    volumeMounts:
+    - name: test-volume
+      mountPath: /data
+  volumes:
+  - name: test-volume
+    persistentVolumeClaim:
+      claimName: app-pvc
+```
+
+```sh
+kubectl apply -f test-pod.yaml
+kubectl exec -it test-pod -n storage-ns -- ls -la /data
+```
+
+Common Commands Summary
+
+```sh
+# Quick diagnosis
+kubectl get pvc,pv -o wide
+
+# Detailed inspection
+kubectl describe pvc app-pvc -n storage-ns
+kubectl describe pv app-pv
+
+# Compare specs
+kubectl get pvc app-pvc -n storage-ns -o yaml
+kubectl get pv app-pv -o yaml
+
+# Edit PVC if needed
+kubectl edit pvc app-pvc -n storage-ns
+
+# Verify binding
+kubectl get pvc app-pvc -n storage-ns
+kubectl get pv app-pv
+```
+
+Expected Outcome
+After fixing the mismatch:
+
+PVC status changes from Pending to Bound
+PV status changes from Available to Bound
+PV shows the correct ClaimRef pointing to storage-ns/app-pvc
+The volume can be successfully mounted by pods
+The key is to identify which specification mismatch is preventing the binding and adjust the PVC accordingly without modifying the PV resource.
+
 9. A kubeconfig file called **super.kubeconfig** has been created under ``` /root/CKA ```. There is something wrong with the configuration. Troubleshoot and fix it.
 
+Step 1. Examine the kubeconfig file
+First, let's look at the file:
+
+```sh
+ls -la /root/CKA/
+cat /root/CKA/super.kubeconfig
+```
+
+Check the file structure
+
+```sh
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 2: Test the current kubeconfig
+Try to use the kubeconfig:
+
+```sh
+kubectl --kubeconfig=/root/CKA/super.kubeconfig get nodes
+```
+
+Check what errors appear:
+
+```sh
+kubectl --kubeconfig=/root/CKA/super.kubeconfig cluster-info
+```
+
+Step 3: Common kubeconfig issues to check
+Issue 1: Incorrect API Server URL
+Look for server address in clusters section:
+
+```yaml
+clusters:
+- cluster:
+    server: https://wrong-server:6443  # Wrong server
+```
+
+Fix: Update to correct server address
+
+```yaml
+clusters:
+- cluster:
+    server: https://controlplane:6443  # or correct IP
+```
+
+Issue 2: Wrong Certificate Authority Data
+Check certificate-authority-data:
+
+```yaml
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTi...  # Wrong/corrupted cert
+```
+
+Issue 3: Incorrect User Credentials
+Check client certificate and key:
+
+```yaml
+users:
+- user:
+    client-certificate-data: LS0tLS1CRUdJTi...  # Wrong cert
+    client-key-data: LS0tLS1CRUdJTi...          # Wrong key
+```
+
+Issue 4: Wrong Context Configuration
+Check context settings:
+
+```yaml
+contexts:
+- context:
+    cluster: wrong-cluster-name    # Doesn't match cluster name
+    user: wrong-user-name          # Doesn't match user name
+```
+
+Step 4: Systematic troubleshooting approach
+Step 4a: Compare with working kubeconfig
+
+```sh
+# Compare structure with working config
+kubectl config view --kubeconfig=/root/.kube/config
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 4b: Check individual components
+
+Test cluster connectivity:
+
+```sh
+# Extract server URL from kubeconfig
+SERVER=$(kubectl config view --kubeconfig=/root/CKA/super.kubeconfig --minify -o jsonpath='{.clusters[0].cluster.server}')
+echo "Server: $SERVER"
+
+# Test if server is reachable
+curl -k $SERVER/version
+```
+
+Validate certificates:
+
+```sh
+# Check if certificate data is valid base64
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d | openssl x509 -text -noout
+```
+
+Step 5: Common fixes
+Fix 1: Correct the server URL
+
+```sh
+# If server URL is wrong, update it
+kubectl config set-cluster kubernetes --server=https://controlplane:6443 --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Fix 2: Copy certificates from working config
+
+```sh
+# Copy CA certificate from working config
+CA_DATA=$(kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+kubectl config set clusters.kubernetes.certificate-authority-data $CA_DATA --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Fix 3: Fix user credentials
+
+```sh
+# Copy user cert and key from working config
+CLIENT_CERT=$(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-certificate-data}')
+CLIENT_KEY=$(kubectl config view --raw --minify -o jsonpath='{.users[0].user.client-key-data}')
+
+kubectl config set users.kubernetes-admin.client-certificate-data $CLIENT_CERT --kubeconfig=/root/CKA/super.kubeconfig
+kubectl config set users.kubernetes-admin.client-key-data $CLIENT_KEY --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Fix 4: Correct context references
+
+```sh
+# Make sure context references exist
+kubectl config set-context kubernetes-admin@kubernetes --cluster=kubernetes --user=kubernetes-admin --kubeconfig=/root/CKA/super.kubeconfig
+kubectl config use-context kubernetes-admin@kubernetes --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 6: Complete troubleshooting workflow
+Check the original file structure:
+
+```sh
+echo "=== Original kubeconfig structure ==="
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig
+
+echo "=== Working kubeconfig structure ==="
+kubectl config view --kubeconfig=/root/.kube/config
+```
+
+Identify specific issues:
+
+```sh
+# Test connectivity with current config
+echo "=== Testing connectivity ==="
+kubectl --kubeconfig=/root/CKA/super.kubeconfig get nodes 2>&1
+
+# Check if it's a server URL issue
+echo "=== Checking server URL ==="
+grep -A 5 "server:" /root/CKA/super.kubeconfig
+
+# Check if it's a certificate issue
+echo "=== Checking certificates ==="
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig --raw | grep -A 2 -B 2 "certificate-authority-data"
+```
+
+Step 7: Most likely fix scenarios
+Scenario A: Wrong server port (common mistake)
+
+```sh
+# Original (wrong):
+# server: https://controlplane:6444
+
+# Fix:
+kubectl config set-cluster kubernetes --server=https://controlplane:6443 --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Scenario B: Missing or wrong cluster name reference
+
+```sh
+# Check current cluster name
+kubectl config view --kubeconfig=/root/CKA/super.kubeconfig | grep "name:" | head -1
+
+# Update context to use correct cluster name
+kubectl config set-context kubernetes-admin@kubernetes --cluster=kubernetes --user=kubernetes-admin --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Scenario C: Corrupted certificate data
+
+```sh
+# Copy working certificates
+cp /root/.kube/config /root/CKA/super.kubeconfig.backup
+
+# Extract and copy CA cert from working config
+kubectl config view --raw --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | \
+kubectl config set clusters.kubernetes.certificate-authority-data - --kubeconfig=/root/CKA/super.kubeconfig
+```
+
+Step 8: Comprehensive fix script
+
+```sh
+#!/bin/bash
+# Comprehensive kubeconfig fix script
+
+KUBECONFIG_FILE="/root/CKA/super.kubeconfig"
+WORKING_CONFIG="/root/.kube/config"
+
+echo "Fixing kubeconfig: $KUBECONFIG_FILE"
+
+# 1. Set correct server URL
+kubectl config set-cluster kubernetes \
+  --server=https://controlplane:6443 \
+  --kubeconfig=$KUBECONFIG_FILE
+
+# 2. Copy CA certificate from working config
+CA_DATA=$(kubectl config view --raw --kubeconfig=$WORKING_CONFIG --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+kubectl config set clusters.kubernetes.certificate-authority-data "$CA_DATA" --kubeconfig=$KUBECONFIG_FILE
+
+# 3. Copy client certificate and key
+CLIENT_CERT=$(kubectl config view --raw --kubeconfig=$WORKING_CONFIG --minify -o jsonpath='{.users[0].user.client-certificate-data}')
+CLIENT_KEY=$(kubectl config view --raw --kubeconfig=$WORKING_CONFIG --minify -o jsonpath='{.users[0].user.client-key-data}')
+
+kubectl config set users.kubernetes-admin.client-certificate-data "$CLIENT_CERT" --kubeconfig=$KUBECONFIG_FILE
+kubectl config set users.kubernetes-admin.client-key-data "$CLIENT_KEY" --kubeconfig=$KUBECONFIG_FILE
+
+# 4. Set correct context
+kubectl config set-context kubernetes-admin@kubernetes \
+  --cluster=kubernetes \
+  --user=kubernetes-admin \
+  --kubeconfig=$KUBECONFIG_FILE
+
+# 5. Use the context
+kubectl config use-context kubernetes-admin@kubernetes --kubeconfig=$KUBECONFIG_FILE
+
+echo "Testing fixed kubeconfig..."
+kubectl --kubeconfig=$KUBECONFIG_FILE get nodes
+```
+
+Expected Outcome
+After fixing the kubeconfig:
+
+✅ kubectl --kubeconfig=/root/CKA/super.kubeconfig get nodes works
+✅ No connection refused or certificate errors
+✅ Can access cluster resources normally
+✅ Kubeconfig structure is valid and complete
+Common Error Messages and Solutions
+
+Common Error Messages and Solutions
+
+Error	                                      Likely Cause	            Solution
+"connection refused"	                      Wrong server URL/port	    Fix server address
+"certificate signed by unknown authority"	  Wrong CA certificate	    Copy CA from working config
+"Unauthorized"	Wrong client credentials	  Copy client cert/key
+"context not found"	Wrong context name	    Fix context configuration
+
+The key is to systematically check each component of the kubeconfig (clusters, users, contexts) and compare with a working configuration to identify and fix the specific issue.
+
 10. We have created a new deployment called **nginx-deploy**. Scale the deployment to **3 replicas**. Has the number of replicas increased? Troubleshoot and fix the issue.
+
+Step 1. Check the current state of the deployment
+Check deployment status:
+
+```sh
+kubectl get deployment nginx-deploy
+kubectl get deployment nginx-deploy -o wide
+```
+
+Check current replica count:
+
+```sh
+kubectl describe deployment nginx-deploy
+```
+
+Check pods associated with the deployment:
+
+```sh
+kubectl get pods -l app=nginx-deploy
+# or check with deployment selector
+kubectl get pods --selector=$(kubectl get deployment nginx-deploy -o jsonpath='{.spec.selector.matchLabels}' | tr -d '{}' | tr ',' ' ' | sed 's/:/=/g')
+```
+This command retrieves the list of pods that match the label selector used by the Kubernetes Deployment named nginx-deploy.
+
+🔍 Step-by-Step Breakdown
+kubectl get deployment nginx-deploy -o jsonpath='{.spec.selector.matchLabels}'
+
+This extracts the label selectors defined in the nginx-deploy deployment.
+
+Example output: {app:nginx,tier=frontend}
+
+tr -d '{}'
+
+- Removes the curly braces {} from the output.
+
+tr ',' ' '
+
+- Replaces commas with spaces, so multiple labels become space-separated.
+
+sed 's/:/=/g'
+
+- Replaces colons (:) with equals signs (=), converting the format from key:value to key=value, which is the format expected by kubectl get pods --selector.
+
+kubectl get pods --selector=...
+
+Finally, this uses the transformed label selector to list all pods that match the same labels as the nginx-deploy deployment.
+
+Step 2: Scale the deployment to 3 replicas
+Scale using kubectl scale command:
+
+```sh
+kubectl scale deployment nginx-deploy --replicas=3
+```
+
+Alternative method using kubectl patch:
+
+```sh
+kubectl patch deployment nginx-deploy -p '{"spec":{"replicas":3}}'
+```
+
+Step 3: Monitor the scaling process
+Watch the deployment scaling:
+
+```sh
+kubectl get deployment nginx-deploy -w
+```
+
+Check rollout status:
+
+```sh
+kubectl rollout status deployment/nginx-deploy
+```
+
+Monitor pods creation:
+
+```sh
+kubectl get pods -l app=nginx-deploy -w
+```
+
+Step 4: Troubleshoot if scaling fails
+If the replicas don't increase to 3, check these common issues:
+
+Issue 1: Resource Constraints
+Check node resources:
+
+```sh
+kubectl top nodes
+kubectl describe nodes
+```
+
+Check if pods are pending due to insufficient resources:
+
+```sh
+kubectl get pods -l app=nginx-deploy
+kubectl describe pods <pending-pod-name>
+```
+
+Look for resource-related events:
+
+```sh
+kubectl get events --sort-by='.lastTimestamp' | grep nginx-deploy
+```
+
+Issue 2: Pod Security Policies or Admission Controllers
+Check for admission controller issues:
+
+```sh
+kubectl describe deployment nginx-deploy
+kubectl get events --sort-by='.lastTimestamp' | head -20
+```
+
+Issue 3: Image Pull Issues
+Check if pods can't start due to image problems:
+
+```sh
+kubectl describe pods -l app=nginx-deploy | grep -A 5 -B 5 "Failed"
+kubectl get pods -l app=nginx-deploy -o wide
+```
+
+Issue 4: Node Taints and Tolerations
+Check if nodes have taints preventing pod scheduling:
+
+```sh
+kubectl get nodes -o json | jq '.items[] | {name: .metadata.name, taints: .spec.taints}'
+kubectl describe nodes | grep -A 5 -B 5 "Taints"
+```
+
+Issue 5: Controller Manager Issues
+Check if the deployment controller is working:
+
+```sh
+kubectl get pods -n kube-system | grep controller-manager
+kubectl logs -n kube-system kube-controller-manager-controlplane
+```
+
+Step 5: Systematic troubleshooting workflow
+Step 5a: Verify deployment configuration
+
+
+```sh
+echo "=== Deployment Status ==="
+kubectl get deployment nginx-deploy -o yaml
+
+echo "=== Current Pods ==="
+kubectl get pods -l app=nginx-deploy -o wide
+
+echo "=== Recent Events ==="
+kubectl get events --sort-by='.lastTimestamp' | grep nginx-deploy | head -10
+```
+
+Step 5b: Check replica set
+
+```sh
+echo "=== ReplicaSet Status ==="
+kubectl get replicaset -l app=nginx-deploy
+kubectl describe replicaset -l app=nginx-deploy
+```
+
+Step 5c: Check scheduler and controller logs
+
+```sh
+echo "=== Scheduler Logs ==="
+kubectl logs -n kube-system kube-scheduler-controlplane --tail=20
+
+echo "=== Controller Manager Logs ==="
+kubectl logs -n kube-system kube-controller-manager-controlplane --tail=20
+```
+
+Step 6: Common fixes for scaling issues
+Fix 1: Insufficient Resources
+If nodes don't have enough CPU/memory:
+
+```sh
+# Check resource requests in deployment
+kubectl describe deployment nginx-deploy | grep -A 5 "Requests"
+
+# Option 1: Reduce resource requests
+kubectl patch deployment nginx-deploy -p='{"spec":{"template":{"spec":{"containers":[{"name":"nginx","resources":{"requests":{"cpu":"50m","memory":"64Mi"}}}]}}}}'
+
+# Option 2: Add more nodes (if possible in the environment)
+```
+
+Fix 2: Node Taints
+If nodes are tainted:
+
+```sh
+# Remove taints from nodes (if appropriate)
+kubectl taint nodes <node-name> <taint-key>:<taint-value>:<effect>-
+
+# Or add tolerations to deployment
+kubectl patch deployment nginx-deploy -p='{"spec":{"template":{"spec":{"tolerations":[{"key":"<taint-key>","operator":"Equal","value":"<taint-value>","effect":"<effect>"}]}}}}'
+```
+
+Fix 3: Image Pull Issues
+If image can't be pulled:
+
+
+```sh
+# Check image name in deployment
+kubectl describe deployment nginx-deploy | grep Image
+
+# Update to a working image if needed
+kubectl set image deployment/nginx-deploy nginx=nginx:latest
+```
+
+Fix 4: Restart Controller Manager
+If controller manager is stuck:
+
+```sh
+# Check controller manager status
+kubectl get pods -n kube-system kube-controller-manager-controlplane
+
+# If needed, restart by deleting the pod (it will auto-restart)
+kubectl delete pod -n kube-system kube-controller-manager-controlplane
+```
+
+Step 7: Complete troubleshooting script
+
+```sh
+#!/bin/bash
+echo "=== Deployment Scaling Troubleshooting ==="
+
+# Step 1: Current state
+echo "1. Current deployment state:"
+kubectl get deployment nginx-deploy
+kubectl get pods -l app=nginx-deploy
+
+# Step 2: Scale deployment
+echo "2. Scaling deployment to 3 replicas:"
+kubectl scale deployment nginx-deploy --replicas=3
+
+# Step 3: Wait and check
+echo "3. Waiting for scaling to complete..."
+sleep 10
+kubectl get deployment nginx-deploy
+
+# Step 4: Check if scaling worked
+CURRENT_REPLICAS=$(kubectl get deployment nginx-deploy -o jsonpath='{.status.readyReplicas}')
+DESIRED_REPLICAS=$(kubectl get deployment nginx-deploy -o jsonpath='{.spec.replicas}')
+
+echo "Desired replicas: $DESIRED_REPLICAS"
+echo "Current ready replicas: $CURRENT_REPLICAS"
+
+if [ "$CURRENT_REPLICAS" != "$DESIRED_REPLICAS" ]; then
+    echo "4. Scaling issue detected. Troubleshooting..."
+    
+    # Check pods status
+    echo "Pod status:"
+    kubectl get pods -l app=nginx-deploy
+    
+    # Check events
+    echo "Recent events:"
+    kubectl get events --sort-by='.lastTimestamp' | grep nginx-deploy | head -5
+    
+    # Check node resources
+    echo "Node resources:"
+    kubectl top nodes 2>/dev/null || echo "Metrics server not available"
+    
+    # Check pending pods
+    PENDING_PODS=$(kubectl get pods -l app=nginx-deploy --field-selector=status.phase=Pending --no-headers 2>/dev/null | wc -l)
+    if [ "$PENDING_PODS" -gt 0 ]; then
+        echo "Found $PENDING_PODS pending pods. Describing first pending pod:"
+        PENDING_POD=$(kubectl get pods -l app=nginx-deploy --field-selector=status.phase=Pending --no-headers -o custom-columns=NAME:.metadata.name | head -1)
+        kubectl describe pod $PENDING_POD
+    fi
+else
+    echo "4. Scaling successful!"
+fi
+```
+
+Step 8: Monitor and verify the fix
+Check final state:
+
+
+```sh
+kubectl get deployment nginx-deploy
+kubectl get pods -l app=nginx-deploy
+kubectl rollout status deployment/nginx-deploy
+```
+
+Verify all pods are running:
+
+```sh
+kubectl get pods -l app=nginx-deploy -o wide
+kubectl describe deployment nginx-deploy | grep -A 10 "Replicas"
+```
+
+Step 9: Additional monitoring commands
+
+```sh
+# Watch deployment scaling in real-time
+kubectl get deployment nginx-deploy -w
+
+# Monitor pod creation
+kubectl get pods -l app=nginx-deploy -w
+
+# Check deployment history
+kubectl rollout history deployment/nginx-deploy
+
+# Verify service connectivity (if service exists)
+kubectl get service nginx-deploy 2>/dev/null || echo "No service found for deployment"
+```
+
+Expected Outcomes
+Successful scaling:
+
+✅ Deployment shows 3/3 ready replicas
+✅ Three pods are running and ready
+✅ No pending or failed pods
+✅ Events show successful pod creation
+Common issues and their indicators:
+
+Resource constraints: Pods stuck in Pending state with events about insufficient CPU/memory
+Image issues: Pods in ImagePullBackOff or ErrImagePull state
+Node taints: Pods pending with events about node not accepting pods
+Controller issues: Deployment stuck, no new ReplicaSet created
+
+Key Troubleshooting Commands Summary
+
+```sh
+# Quick diagnosis
+kubectl get deployment nginx-deploy
+kubectl get pods -l app=nginx-deploy
+kubectl get events --sort-by='.lastTimestamp' | head -10
+
+# Scale deployment
+kubectl scale deployment nginx-deploy --replicas=3
+
+# Monitor scaling
+kubectl rollout status deployment/nginx-deploy
+
+# Troubleshoot issues
+kubectl describe deployment nginx-deploy
+kubectl describe pods -l app=nginx-deploy
+kubectl top nodes
+```
+
+The key is to systematically check the deployment status, scale it, monitor the process, and troubleshoot any issues that prevent the scaling from completing successfully.
+
 
 11. Create a Horizontal Pod Autoscaler (HPA) **api-hpa** for the deployment named **api-deployment** located in the **api namespace**.
 The HPA should scale the deployment based on a custom metric named **requests_per_second**, targeting an average value of **1000** requests per second across all pods.
 Set the minimum number of replicas to **1** and the maximum to **20**.
 
 Note: Deployment named **api-deployment** is available in **api namespace**. Ignore errors due to the metric **requests_per_second** not being tracked in **metrics-server**
+
+Step 1: Verify the existing deployment
+Check if the deployment exists:
+
+```sh
+kubectl get deployment api-deployment -n api
+kubectl describe deployment api-deployment -n api
+```
+
+Check current pods:
+
+```sh
+kubectl get pods -n api -l app=api-deployment
+```
+
+Verify the namespace exists:
+
+```sh
+kubectl get namespace api
+```
+
+Step 2: Check prerequisites for custom metrics
+Check if metrics server is running:
+
+```sh
+kubectl get pods -n kube-system | grep metrics-server
+```
+
+Check for custom metrics API:
+
+```sh
+kubectl get apiservices | grep custom.metrics
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
+```
+
+Step 3: Create the HPA with xustom metrics
+
+Method 1: Using YAML manifest (Recommended)
+
+Create the HPA YAML file:
+
+```yaml
+# api-hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+```
+
+
+Apply the HPA:
+
+```sh
+kubectl apply -f api-hpa.yaml
+```
+
+Alternative Method 2: Using kubectl imperative commands
+
+For basic HPA (CPU-based) and then edit:
+
+```sh
+kubectl autoscale deployment api-deployment --name=api-hpa --min=1 --max=20 --cpu-percent=80 -n api
+```
+
+Then edit to add custom metrics:
+
+```sh
+kubectl edit hpa api-hpa -n api
+```
+
+Step 4: Understanding the custom metrics configuration
+Metric Types for Custom Metrics:
+
+Type 1: Pods metrics (Per-pod basis)
+
+```yaml
+metrics:
+- type: Pods
+  pods:
+    metric:
+      name: requests_per_second
+    target:
+      type: AverageValue
+      averageValue: "1000"  # 1000 requests per second per pod
+```
+
+Type 2: Object metrics (External object)
+
+```yaml
+metrics:
+- type: Object
+  object:
+    metric:
+      name: requests_per_second
+    target:
+      type: Value
+      value: "1000"
+    describedObject:
+      apiVersion: v1
+      kind: Service
+      name: api-service
+```
+
+Type 3: External metrics (External monitoring system)
+
+```yaml
+metrics:
+- type: External
+  external:
+    metric:
+      name: requests_per_second
+      selector:
+        matchLabels:
+          service: api-deployment
+    target:
+      type: AverageValue
+      averageValue: "1000"
+```
+
+Step 5: Verify HPA creation
+Check HPA status:
+
+```sh
+kubectl get hpa api-hpa -n api
+kubectl describe hpa api-hpa -n api
+```
+
+Monitor HPA in real-time:
+
+```sh
+kubectl get hpa api-hpa -n api -w
+```
+
+Check HPA details:
+
+```sh
+kubectl get hpa api-hpa -n api -o yaml
+```
+
+Step 6: Expected behavior and troubleshooting
+Expected Output:
+
+```sh
+kubectl get hpa api-hpa -n api
+```
+
+Should show something like:
+
+NAME      REFERENCE                TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+api-hpa   Deployment/api-deployment   <unknown>/1000   1         20        1          30s
+
+Note: The <unknown> is expected since the custom metric requests_per_second is not actually being tracked by the metrics server (as mentioned in the question).
+
+Troubleshooting common issues:
+Issue 1: HPA shows "unknown" metrics
+This is expected behavior when custom metrics aren't available:
+
+```sh
+kubectl describe hpa api-hpa -n api
+# Look for events about missing metrics
+```
+
+Issue 2: HPA not scaling
+Check if metrics server is working:
+
+```sh
+kubectl top pods -n api
+kubectl logs -n kube-system deployment/metrics-server
+```
+
+Issue 3: Invalid configuration
+Check HPA events:
+
+```sh
+kubectl get events -n api --sort-by='.lastTimestamp' | grep api-hpa
+```
+
+Step 7: Complete HPA configuration examples
+Example 1: Simple custom metric HPA
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+```
+
+Example 2: Multiple metrics HPA
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+```
+
+Step 8: Testing and validation
+Test HPA behavior:
+
+```sh
+# Check current replica count
+kubectl get deployment api-deployment -n api
+
+# Monitor HPA status
+kubectl get hpa api-hpa -n api -w
+
+# Check HPA events
+kubectl describe hpa api-hpa -n api
+```
+
+Simulate load (if metrics were available):
+
+
+```sh
+# This would typically trigger scaling if metrics were working
+# kubectl run load-generator --image=busybox -n api --rm -it --restart=Never -- /bin/sh
+# while true; do wget -q -O- http://api-service.api.svc.cluster.local/; done
+```
+
+Step 9: Complete deployment workflow
+
+```sh
+#!/bin/bash
+echo "=== Creating HPA with Custom Metrics ==="
+
+# Step 1: Verify prerequisites
+echo "1. Checking deployment..."
+kubectl get deployment api-deployment -n api
+
+# Step 2: Create HPA YAML
+cat > api-hpa.yaml << EOF
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+EOF
+
+# Step 3: Apply HPA
+echo "2. Creating HPA..."
+kubectl apply -f api-hpa.yaml
+
+# Step 4: Verify creation
+echo "3. Verifying HPA..."
+kubectl get hpa api-hpa -n api
+kubectl describe hpa api-hpa -n api
+
+echo "4. HPA created successfully!"
+echo "Note: Metrics will show as 'unknown' since requests_per_second is not tracked"
+```
+
+Step 10: Advanced HPA features
+Scaling Behavior Configuration:
+
+```yaml
+spec:
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+```
+
+Expected Final Result:
+HPA Status:
+
+```sh
+kubectl get hpa api-hpa -n api
+```
+
+Output:
+
+NAME      REFERENCE                TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+api-hpa   Deployment/api-deployment   <unknown>/1000   1         20        1          1m
+
+
+Key Points:
+
+✅ HPA api-hpa created in api namespace
+✅ Targets api-deployment
+✅ Min replicas: 1, Max replicas: 20
+✅ Custom metric: requests_per_second with target 1000
+✅ Shows <unknown> for metrics (expected behavior)
+Important Notes:
+Custom Metrics: The requests_per_second metric doesn't exist in the metrics server, so it will show as <unknown>
+Scaling Logic: HPA will scale up when average requests per second across all pods exceeds 1000
+API Version: Use autoscaling/v2 for custom metrics support
+Metric Types: Pods type means the metric is collected per pod and averaged
+The HPA is correctly configured and will work properly once the custom metrics are
+
+
 
 12. Configure the web-route to split traffic between **web-service** and **web-service-v2**.The configuration should ensure that **80%** of the traffic is routed to **web-service** and **20%** is routed to **web-service-v2**.
 
