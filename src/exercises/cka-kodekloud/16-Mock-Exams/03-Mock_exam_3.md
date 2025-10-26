@@ -1983,6 +1983,391 @@ Set the minimum number of replicas to **1** and the maximum to **20**.
 
 Note: Deployment named **api-deployment** is available in **api namespace**. Ignore errors due to the metric **requests_per_second** not being tracked in **metrics-server**
 
+Step 1: Verify the existing deployment
+Check if the deployment exists:
+
+```sh
+kubectl get deployment api-deployment -n api
+kubectl describe deployment api-deployment -n api
+```
+
+Check current pods:
+
+```sh
+kubectl get pods -n api -l app=api-deployment
+```
+
+Verify the namespace exists:
+
+```sh
+kubectl get namespace api
+```
+
+Step 2: Check prerequisites for custom metrics
+Check if metrics server is running:
+
+```sh
+kubectl get pods -n kube-system | grep metrics-server
+```
+
+Check for custom metrics API:
+
+```sh
+kubectl get apiservices | grep custom.metrics
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
+```
+
+Step 3: Create the HPA with xustom metrics
+
+Method 1: Using YAML manifest (Recommended)
+
+Create the HPA YAML file:
+
+```yaml
+# api-hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+```
+
+
+Apply the HPA:
+
+```sh
+kubectl apply -f api-hpa.yaml
+```
+
+Alternative Method 2: Using kubectl imperative commands
+
+For basic HPA (CPU-based) and then edit:
+
+```sh
+kubectl autoscale deployment api-deployment --name=api-hpa --min=1 --max=20 --cpu-percent=80 -n api
+```
+
+Then edit to add custom metrics:
+
+```sh
+kubectl edit hpa api-hpa -n api
+```
+
+Step 4: Understanding the custom metrics configuration
+Metric Types for Custom Metrics:
+
+Type 1: Pods metrics (Per-pod basis)
+
+```yaml
+metrics:
+- type: Pods
+  pods:
+    metric:
+      name: requests_per_second
+    target:
+      type: AverageValue
+      averageValue: "1000"  # 1000 requests per second per pod
+```
+
+Type 2: Object metrics (External object)
+
+```yaml
+metrics:
+- type: Object
+  object:
+    metric:
+      name: requests_per_second
+    target:
+      type: Value
+      value: "1000"
+    describedObject:
+      apiVersion: v1
+      kind: Service
+      name: api-service
+```
+
+Type 3: External metrics (External monitoring system)
+
+```yaml
+metrics:
+- type: External
+  external:
+    metric:
+      name: requests_per_second
+      selector:
+        matchLabels:
+          service: api-deployment
+    target:
+      type: AverageValue
+      averageValue: "1000"
+```
+
+Step 5: Verify HPA creation
+Check HPA status:
+
+```sh
+kubectl get hpa api-hpa -n api
+kubectl describe hpa api-hpa -n api
+```
+
+Monitor HPA in real-time:
+
+```sh
+kubectl get hpa api-hpa -n api -w
+```
+
+Check HPA details:
+
+```sh
+kubectl get hpa api-hpa -n api -o yaml
+```
+
+Step 6: Expected behavior and troubleshooting
+Expected Output:
+
+```sh
+kubectl get hpa api-hpa -n api
+```
+
+Should show something like:
+
+NAME      REFERENCE                TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+api-hpa   Deployment/api-deployment   <unknown>/1000   1         20        1          30s
+
+Note: The <unknown> is expected since the custom metric requests_per_second is not actually being tracked by the metrics server (as mentioned in the question).
+
+Troubleshooting common issues:
+Issue 1: HPA shows "unknown" metrics
+This is expected behavior when custom metrics aren't available:
+
+```sh
+kubectl describe hpa api-hpa -n api
+# Look for events about missing metrics
+```
+
+Issue 2: HPA not scaling
+Check if metrics server is working:
+
+```sh
+kubectl top pods -n api
+kubectl logs -n kube-system deployment/metrics-server
+```
+
+Issue 3: Invalid configuration
+Check HPA events:
+
+```sh
+kubectl get events -n api --sort-by='.lastTimestamp' | grep api-hpa
+```
+
+Step 7: Complete HPA configuration examples
+Example 1: Simple custom metric HPA
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+```
+
+Example 2: Multiple metrics HPA
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+```
+
+Step 8: Testing and validation
+Test HPA behavior:
+
+```sh
+# Check current replica count
+kubectl get deployment api-deployment -n api
+
+# Monitor HPA status
+kubectl get hpa api-hpa -n api -w
+
+# Check HPA events
+kubectl describe hpa api-hpa -n api
+```
+
+Simulate load (if metrics were available):
+
+
+```sh
+# This would typically trigger scaling if metrics were working
+# kubectl run load-generator --image=busybox -n api --rm -it --restart=Never -- /bin/sh
+# while true; do wget -q -O- http://api-service.api.svc.cluster.local/; done
+```
+
+Step 9: Complete deployment workflow
+
+```sh
+#!/bin/bash
+echo "=== Creating HPA with Custom Metrics ==="
+
+# Step 1: Verify prerequisites
+echo "1. Checking deployment..."
+kubectl get deployment api-deployment -n api
+
+# Step 2: Create HPA YAML
+cat > api-hpa.yaml << EOF
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-hpa
+  namespace: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-deployment
+  minReplicas: 1
+  maxReplicas: 20
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "1000"
+EOF
+
+# Step 3: Apply HPA
+echo "2. Creating HPA..."
+kubectl apply -f api-hpa.yaml
+
+# Step 4: Verify creation
+echo "3. Verifying HPA..."
+kubectl get hpa api-hpa -n api
+kubectl describe hpa api-hpa -n api
+
+echo "4. HPA created successfully!"
+echo "Note: Metrics will show as 'unknown' since requests_per_second is not tracked"
+```
+
+Step 10: Advanced HPA features
+Scaling Behavior Configuration:
+
+```yaml
+spec:
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+```
+
+Expected Final Result:
+HPA Status:
+
+```sh
+kubectl get hpa api-hpa -n api
+```
+
+Output:
+
+NAME      REFERENCE                TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+api-hpa   Deployment/api-deployment   <unknown>/1000   1         20        1          1m
+
+
+Key Points:
+
+✅ HPA api-hpa created in api namespace
+✅ Targets api-deployment
+✅ Min replicas: 1, Max replicas: 20
+✅ Custom metric: requests_per_second with target 1000
+✅ Shows <unknown> for metrics (expected behavior)
+Important Notes:
+Custom Metrics: The requests_per_second metric doesn't exist in the metrics server, so it will show as <unknown>
+Scaling Logic: HPA will scale up when average requests per second across all pods exceeds 1000
+API Version: Use autoscaling/v2 for custom metrics support
+Metric Types: Pods type means the metric is collected per pod and averaged
+The HPA is correctly configured and will work properly once the custom metrics are
+
+
+
 12. Configure the web-route to split traffic between **web-service** and **web-service-v2**.The configuration should ensure that **80%** of the traffic is routed to **web-service** and **20%** is routed to **web-service-v2**.
 
 Note: web-gateway, web-service, and web-service-v2 have already been created and are available on the cluster.
